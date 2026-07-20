@@ -15,6 +15,7 @@ import VideoStreamFullscreen from "@/components/video-stream-fullscreen";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/lib/auth";
+import { useComPort } from "@/Comportcontext";
 
 export default function PurchaseReturnForm() {
   const [location, setLocation] = useLocation();
@@ -71,6 +72,8 @@ export default function PurchaseReturnForm() {
     })),
   );
   const [nextBagId, setNextBagId] = useState(1);
+
+  const { comPort } = useComPort();
 
   const handleSalesDataChange = (
     index: number,
@@ -300,7 +303,7 @@ export default function PurchaseReturnForm() {
           <div class="copy-label">Head Office Copy - Purchase Return</div>
           <div class="print-date">Print Date: ${currentDate} ${currentTime}</div>
         </div>
-        <div class="company-name">Shahzor  Feed  Mill</div>
+        <div class="company-name">MULTAN FEEDS   Mill</div>
         <div style="height: 10px;"></div>
         <div class="slip-title">PURCHASE RETURN SLIP</div>
 
@@ -796,6 +799,9 @@ export default function PurchaseReturnForm() {
     }
   };
 
+
+  
+
   const handleSave = async () => {
     setLoading(true);
 
@@ -1197,18 +1203,18 @@ export default function PurchaseReturnForm() {
     <div className="h-screen bg-gray-100 p-1 overflow-hidden relative">
       {/* Weight Display Table - Upper Right Side */}
       <div
-        className={`absolute ${isEditMode ? "top-40" : "top-20"} right-14 z-50`}
+        className={`absolute ${isEditMode ? "top-40" : "top-20"} right-3 z-50`}
       >
-        <div className="bg-white border-2 border-gray-400 rounded-md shadow-lg w-[450px] mb-6">
+        <div className="bg-white border-2 border-gray-400 rounded-md shadow-lg w-[350px] mb-6">
           {/* Header Row */}
           <div className="grid grid-cols-3 border-b border-gray-400">
-            <div className="bg-gray-200 border-r border-gray-400 p-2 text-center text-sm font-semibold text-black">
+            <div className="bg-gray-200 border-r border-gray-400 p-1 text-center text-sm font-semibold text-black">
               Slip No
             </div>
-            <div className="bg-gray-200 border-r border-gray-400 p-2 text-center text-sm font-semibold text-black">
+            <div className="bg-gray-200 border-r border-gray-400 p-1 text-center text-sm font-semibold text-black">
               Vehicle No
             </div>
-            <div className="bg-gray-200 p-2 text-center text-sm font-semibold text-black">
+            <div className="bg-gray-200 p-1 text-center text-sm font-semibold text-black">
               Entry Type
             </div>
           </div>
@@ -1245,94 +1251,90 @@ export default function PurchaseReturnForm() {
           </div>
 
           {/* Data Rows - showing filtered records */}
-          <div className="max-h-48 overflow-y-auto">
-            {filteredRecords && filteredRecords.length > 0 ? (
-              filteredRecords.map((record: any, index: number) => (
-                <div
-                  key={index}
-                  className="grid grid-cols-3 border-b border-gray-400 hover:bg-gray-50"
-                >
-                  <button
-                    className="border-r border-gray-400 p-2 text-center text-xs text-blue-600 w-[149px]"
-                    onClick={() => {
-                      console.log("Clicked record:", record);
-                      console.log("wb_id:", record.wb_id);
-                      console.log("entry_type:", record.entry_type);
+<div className="max-h-48 overflow-y-auto">
+  {filteredRecords && filteredRecords.length > 0 ? (
+    filteredRecords.map((record: any, index: number) => (
+      <div
+        key={index}
+        className="grid grid-cols-3 border-b border-gray-400 hover:bg-gray-50"
+      >
+        {/* Slip No */}
+        <button
+          className="border-r border-gray-400 p-1 text-center text-xs text-blue-600 flex-1"
+          onClick={() => {
+            console.log("Clicked record:", record);
+            console.log("wb_id:", record.wb_id);
+            console.log("entry_type:", record.entry_type);
 
-                      if (record.wb_id) {
-                        // Navigate based on entry type
-                        const urlParams = new URLSearchParams(
-                          window.location.search,
-                        );
-                        const typeMode = urlParams.get("type") || "online";
+            if (record.wb_id) {
+              const urlParams = new URLSearchParams(window.location.search);
+              const typeMode = urlParams.get("type") || "online";
 
-                        if (record.entry_type === "PURCHASE") {
-                          // Navigate to purchase form
-                          const targetUrl = `/purchase-form?type=${typeMode}&edit=${record.wb_id}`;
-                          setLocation(targetUrl);
-                        } else if (record.entry_type === "PURCHASE_RETURN") {
-                          // Stay on purchase return form and load the data
-                          urlParams.set("edit", record.wb_id);
-                          const newUrl = `${window.location.pathname}?${urlParams.toString()}`;
-                          window.history.replaceState({}, "", newUrl);
-                          sessionStorage.setItem("purchaseReturnEditMode", "true");
-                          loadDataByWbId(parseInt(record.wb_id));
-                        } else if (record.entry_type === "SALE") {
-                          // Navigate to sales form
-                          const targetUrl = `/sales-form?type=${typeMode}&edit=${record.wb_id}`;
-                          setLocation(targetUrl);
-                        } else if (record.entry_type === "SALE_RETURN" || record.entry_type === "SALES_RETURN") {
-                          // Navigate to sales return form
-                          const targetUrl = `/sales-return?type=${typeMode}&edit=${record.wb_id}`;
-                          console.log(
-                            "Navigating to sales return form:",
-                            targetUrl,
-                          );
-                          window.location.href = targetUrl;
-                        }
-                      }
-                    }}
-                  >
-                    {record.slip_no || "---"}
-                  </button>
-                  <div className="border-r border-gray-400 p-2 text-center text-xs text-black w-[156px]">
-                    {record.vehicle_no || "---"}
-                  </div>
-                  <div className="p-2 text-center text-xs text-blue-600 font-semibold flex-1">
-                    {record.entry_type || "PURCHASE"}
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="grid grid-cols-3 border-b border-gray-400">
-                <div className="border-r border-gray-400 p-1 text-center text-xs text-gray-500 bg-white">
-                  {searchSlipNo || searchVehicleNo
-                    ? "No matches"
-                    : "No records"}
-                </div>
-                <div className="border-r border-gray-400 p-1 text-center text-xs text-gray-500 bg-white">
-                  ---
-                </div>
-                <div className="p-1 text-center text-xs text-gray-500 bg-white">
-                  ---
-                </div>
-              </div>
-            )}
-          </div>
+              if (record.entry_type === "PURCHASE") {
+                const targetUrl = `/purchase-form?type=${typeMode}&edit=${record.wb_id}`;
+                setLocation(targetUrl);
+              } else if (record.entry_type === "PURCHASE_RETURN") {
+                // Stay on purchase return form and load the data
+                urlParams.set("edit", record.wb_id);
+                const newUrl = `${window.location.pathname}?${urlParams.toString()}`;
+                window.history.replaceState({}, "", newUrl);
+                sessionStorage.setItem("purchaseReturnEditMode", "true");
+                loadDataByWbId(parseInt(record.wb_id));
+              } else if (record.entry_type === "SALE") {
+                const targetUrl = `/sales-form?type=${typeMode}&edit=${record.wb_id}`;
+                setLocation(targetUrl);
+              } else if (
+                record.entry_type === "SALE_RETURN" ||
+                record.entry_type === "SALES_RETURN"
+              ) {
+                const targetUrl = `/sales-return?type=${typeMode}&edit=${record.wb_id}`;
+                console.log("Navigating to sales return form:", targetUrl);
+                window.location.href = targetUrl;
+              }
+            }
+          }}
+        >
+          {record.slip_no || "---"}
+        </button>
 
-          {/* Load Data Button */}
+        {/* Vehicle No */}
+        <div className="border-r border-gray-400 p-1 text-center text-xs text-black flex-1">
+          {record.vehicle_no || "---"}
+        </div>
+
+        {/* Entry Type */}
+        <div className="p-1 text-center text-xs text-blue-600 font-semibold flex-1 truncate">
+          {record.entry_type || "PURCHASE"}
+        </div>
+      </div>
+    ))
+  ) : (
+    <div className="grid grid-cols-3 border-b border-gray-400">
+      <div className="border-r border-gray-400 p-1 text-center text-xs text-gray-500 bg-white">
+        {searchSlipNo || searchVehicleNo ? "No matches" : "No records"}
+      </div>
+      <div className="border-r border-gray-400 p-1 text-center text-xs text-gray-500 bg-white">
+        ---
+      </div>
+      <div className="p-1 text-center text-xs text-gray-500 bg-white">---</div>
+    </div>
+  )}
+</div>
+
+
+          {/* Load Data Button
           <button
             className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 text-xs"
             onClick={() => window.location.reload()}
           >
             Load Data
-          </button>
+          </button> */}
         </div>
       </div>
 
       {/* Edit Mode Indicator */}
       {isEditMode && (
-        <div className="bg-blue-600 text-white p-2 rounded mb-2 text-center text-sm font-medium">
+        <div className="bg-blue-600 text-white p-1 rounded mb-2 text-center text-sm font-medium">
           EDIT MODE: Purchase Return Slip No. {formData.slipNo} (ID:{" "}
           {editingWbId})
         </div>
@@ -1342,7 +1344,7 @@ export default function PurchaseReturnForm() {
       <div className="flex justify-between items-center bg-white border rounded p-1 mb-1">
         <div className="flex gap-1 text-xs">
           <Button
-            className="h-8 px-2 text-sm font-medium bg-gray-300 hover:bg-gray-400 text-black"
+            className="h-7 px-1 text-sm font-medium bg-gray-300 hover:bg-gray-400 text-black"
             onClick={() => {
               // Navigate to purchase form with same type
               const urlParams = new URLSearchParams(window.location.search);
@@ -1355,7 +1357,7 @@ export default function PurchaseReturnForm() {
             Purchase
           </Button>
           <Button
-            className="h-8 px-2 text-sm font-medium bg-gray-300 hover:bg-gray-400 text-black"
+            className="h-7 px-1 text-sm font-medium bg-gray-300 hover:bg-gray-400 text-black"
             onClick={() => {
               // Navigate to sales form with same type
               const urlParams = new URLSearchParams(window.location.search);
@@ -1368,7 +1370,7 @@ export default function PurchaseReturnForm() {
             Sale
           </Button>
           <Button
-            className="h-8 px-2 text-sm font-medium bg-gray-300 hover:bg-gray-400 text-black"
+            className="h-7 px-1 text-sm font-medium bg-gray-300 hover:bg-gray-400 text-black"
             onClick={() => {
               // Navigate to sales return form with same type
               const urlParams = new URLSearchParams(window.location.search);
@@ -1384,51 +1386,63 @@ export default function PurchaseReturnForm() {
             Purchase Return
           </Button>
           <Button
-            className="h-8 px-2 text-sm bg-blue-600 hover:bg-blue-700 text-white font-medium"
+            className="h-7 px-1 text-sm bg-blue-600 hover:bg-blue-700 text-white font-medium"
             onClick={() => setLocation("/edit-record")}
           >
             Edit
           </Button>
           <Button
-            className="bg-green-600 hover:bg-green-700 h-8 px-3 text-sm text-white font-medium"
+            className="bg-green-600 hover:bg-green-700 h-7 px-1 text-sm text-white font-medium"
             onClick={handleSave}
             disabled={loading}
           >
             {loading ? "Saving..." : "Save"}
           </Button>
           <Button
-            className="h-8 px-2 text-sm bg-purple-600 hover:bg-purple-700 text-white font-medium"
+            className="h-7 px-1 text-sm bg-purple-600 hover:bg-purple-700 text-white font-medium"
             onClick={handlePrintReport}
           >
             Print
           </Button>
           <Button
-            className="h-8 px-2 text-sm bg-yellow-500 text-xs"
+            className="h-7 px-1 text-sm bg-yellow-500 text-xs"
             onClick={resetForm}
           >
             Clear
           </Button>
         </div>
-        <div className="flex gap-1 items-center">
-          {/* Weight Display */}
-          <div className="mr-2">
-            <WeightIndicator comPort="COM6" compact={true} />
-          </div>
+        <div className="flex items-center gap-1">
+        {/* Weight Display - bigger and aligned left */}
+        <div className="mr-4 transform scale-110">
+          <WeightIndicator comPort={comPort} compact={true} />
+        </div>
+      
+        {/* Buttons */}
+        <div className="flex gap-2 ml-28">
           <button
-            className={`h-6 px-3 text-xs font-medium rounded transition-colors ${onlineMode === true ? "bg-green-500 hover:bg-green-600 text-white" : "bg-gray-300 hover:bg-gray-400 text-gray-600"}`}
+            className={`h-7 px-2 text-sm font-medium rounded transition-colors ${
+              onlineMode === true
+                ? "bg-green-500 hover:bg-green-600 text-white"
+                : "bg-gray-300 hover:bg-gray-400 text-gray-600"
+            }`}
             onClick={() => toggleOnlineMode(true)}
           >
             ONLINE
-          </Button>
+          </button>
+      
           <button
-            className={`h-6 px-3 text-xs font-medium rounded transition-colors ${onlineMode === false ? "bg-red-500 hover:bg-red-600 text-white" : "bg-gray-300 hover:bg-gray-400 text-gray-600"}`}
+            className={`h-7 px-2 text-sm font-medium rounded transition-colors ${
+              onlineMode === false
+                ? "bg-red-500 hover:bg-red-600 text-white"
+                : "bg-gray-300 hover:bg-gray-400 text-gray-600"
+            }`}
             onClick={() => toggleOnlineMode(false)}
           >
             OFFLINE
-          </Button>
+          </button>
         </div>
       </div>
-
+      </div>
       {/* Main Form Layout */}
       <div className="bg-white p-1 rounded border h-[calc(100vh-60px)] overflow-hidden">
         <div className="grid grid-cols-12 gap-1 h-full">
@@ -1436,8 +1450,8 @@ export default function PurchaseReturnForm() {
           <div className="col-span-8">
             {/* Master Table Section */}
             {/* Master Table Section */}
-            <div className="bg-blue-50 p-2 rounded border mb-3">
-              <div className="grid grid-cols-3 gap-x-3 gap-y-2">
+            <div className="bg-blue-50 p-1 rounded border mb-3">
+              <div className="grid grid-cols-3 gap-x-2 gap-y-1">
                 {/* Column 1 - Left Form Fields */}
                 <div className="space-y-1">
                   <div>
@@ -1446,7 +1460,7 @@ export default function PurchaseReturnForm() {
                       name="slipNo"
                       value={formData.slipNo}
                       readOnly
-                      className="h-8 w-64 text-xs text-black"
+                      className="h-7 w-32 text-xs text-black"
                     />
                   </div>
                   <div>
@@ -1457,7 +1471,7 @@ export default function PurchaseReturnForm() {
                       name="originalSlipNo"
                       value={formData.originalSlipNo}
                       onChange={handleChange}
-                      className="h-8 w-64 text-xs text-black"
+                      className="h-7 w-32 text-xs text-black"
                       placeholder="Original slip"
                     />
                   </div>
@@ -1467,7 +1481,7 @@ export default function PurchaseReturnForm() {
                       name="vehicleNo"
                       value={formData.vehicleNo}
                       onChange={handleChange}
-                      className="h-8 w-64 text-xs text-black"
+                      className="h-7 w-32 text-xs text-black"
                       placeholder="Vehicle number"
                     />
                   </div>
@@ -1478,18 +1492,18 @@ export default function PurchaseReturnForm() {
                       name="returnDate"
                       value={formData.returnDate}
                       onChange={handleChange}
-                      className="h-8 w-64 text-xs text-black"
+                      className="h-7 w-32 text-xs text-black"
                     />
                   </div>
                   <div>
                     <Label className="text-xs text-black">Return Reason</Label>
-                    <Textarea
-                      placeholder="Enter return reason"
-                      name="returnReason"
-                      value={formData.returnReason}
-                      onChange={handleChange}
-                      className="h-8 w-64 text-xs resize-none text-black placeholder:text-gray-500"
-                    />
+                     <Input
+                     placeholder="Enter return reason"
+                     name="returnReason"
+                     value={formData.returnReason}
+                     onChange={handleChange}
+                     className="text-xs text-black placeholder:text-gray-500 h-[62px] w-[220px]"
+                   />
                   </div>
                 </div>
 
@@ -1501,7 +1515,7 @@ export default function PurchaseReturnForm() {
                       name="firstWeight"
                       value={formData.firstWeight}
                       onChange={handleChange}
-                      className="h-8 w-64 text-xs text-black"
+                      className="h-7 w-32 text-xs text-black"
                     />
                   </div>
                   <div>
@@ -1510,7 +1524,7 @@ export default function PurchaseReturnForm() {
                       name="secondWeight"
                       value={formData.secondWeight}
                       onChange={handleChange}
-                      className="h-8 w-64 text-xs text-green-600"
+                      className="h-7 w-32 text-xs text-green-600"
                     />
                   </div>
                   <div>
@@ -1519,7 +1533,7 @@ export default function PurchaseReturnForm() {
                       name="bardanaWeight"
                       value={formData.bardanaWeight}
                       onChange={handleChange}
-                      className="h-8 w-64 text-xs text-black"
+                      className="h-7 w-32 text-xs text-black"
                     />
                   </div>
                   <div>
@@ -1528,7 +1542,7 @@ export default function PurchaseReturnForm() {
                       name="grossWeight"
                       value={formData.grossWeight}
                       readOnly
-                      className="h-8 w-64 text-xs text-black"
+                      className="h-7 w-32 text-xs text-black"
                     />
                   </div>
                   <div>
@@ -1537,7 +1551,7 @@ export default function PurchaseReturnForm() {
                       name="netWeight"
                       value={formData.netWeight}
                       onChange={handleChange}
-                      className="h-8 w-64 text-xs bg-yellow-200 text-black"
+                      className="h-7 w-32 text-xs bg-yellow-200 text-black"
                     />
                   </div>
                 </div>
@@ -1551,7 +1565,7 @@ export default function PurchaseReturnForm() {
                       name="customerName"
                       value={formData.customerName}
                       onChange={handleChange}
-                      className="h-8 w-64 text-xs text-black"
+                      className="h-7 w-32 text-xs text-black"
                       placeholder="Customer name"
                     />
                   </div>
@@ -1569,7 +1583,7 @@ export default function PurchaseReturnForm() {
                         }))
                       }
                     >
-                      <SelectTrigger className="h-8 w-64 text-xs text-black">
+                      <SelectTrigger className="h-7 w-32 text-xs text-black">
                         <SelectValue
                           placeholder="Select branch"
                           className="text-black"
@@ -1589,15 +1603,15 @@ export default function PurchaseReturnForm() {
                   </div>
 
                   {/* Weight Buttons */}
-                  <div className="grid grid-cols-2 gap-1 mt-1 ">
+                  <div className="grid grid-cols-2 gap-1 mt-2 ">
                     <Button
-                      className="h-8 bg-green-600 text-xs"
+                      className="h-7 bg-green-600 text-xs"
                       onClick={captureFirstWeight}
                     >
                       1st WHT
                     </Button>
                     <Button
-                      className="h-8 bg-gray-500 text-xs"
+                      className="h-7 bg-gray-500 text-xs"
                       onClick={captureSecondWeight}
                     >
                       2nd WHT
@@ -1605,7 +1619,7 @@ export default function PurchaseReturnForm() {
                   </div>
 
                   {/* Camera Section */}
-                  <div className="h-36 w-full overflow-hidden mt-2 border rounded">
+                  <div className="h-28 w-full overflow-hidden mt-1 border rounded">
                     <VideoStreamFullscreen
                       camera={{
                         id: 1,
@@ -1633,15 +1647,15 @@ export default function PurchaseReturnForm() {
             </div>
 
             {/* Large Label Between Sections */}
-            <div className="text-center py-4 mb-3">
+            <div className="text-center py-1 mb-1 mt-0">
               <div
-                className={`inline-block px-4 py-1 rounded-lg shadow-md ${
+                className={`inline-block px-1 py-1 rounded-lg shadow-md ${
                   onlineMode === true
                     ? "bg-green-500 text-white"
                     : "bg-red-500 text-white"
                 }`}
               >
-                <h2 className="text-3xl font-bold tracking-wide">
+                <h2 className="text-2xl font-bold tracking-wide">
                   {onlineMode === true
                     ? "Purchase Return Online"
                     : "Purchase Return Offline"}
@@ -1650,15 +1664,15 @@ export default function PurchaseReturnForm() {
             </div>
 
             {/* Purchase Return Details Section */}
-            <div className="bg-blue-50 p-2 rounded border">
-              <div className="grid grid-cols-4 gap-3">
+            <div className="bg-blue-50 p-0.5 rounded border">
+              <div className="grid grid-cols-4 gap-1">
                 <div>
                   <Label className="text-xs text-black">IGP No</Label>
                   <Input
                     name="igpNo"
                     value={formData.igpNo}
                     onChange={handleChange}
-                    className="h-6 w-64 text-xs text-black"
+                    className="h-6 w-32 text-xs text-black"
                     placeholder="IGP number"
                   />
                 </div>
@@ -1668,7 +1682,7 @@ export default function PurchaseReturnForm() {
                     name="vendor"
                     value={formData.vendor}
                     onChange={handleChange}
-                    className="h-6 w-64 text-xs text-black"
+                    className="h-6 w-32 text-xs text-black"
                     placeholder="Vendor name"
                   />
                 </div>
@@ -1678,7 +1692,7 @@ export default function PurchaseReturnForm() {
                     name="itemDesc"
                     value={formData.itemDesc}
                     onChange={handleChange}
-                    className="h-6 w-64 text-xs text-black"
+                    className="h-6 w-32 text-xs text-black"
                     placeholder="Item description"
                   />
                 </div>
@@ -1688,7 +1702,7 @@ export default function PurchaseReturnForm() {
                     name="noOfBags"
                     value={formData.noOfBags}
                     onChange={handleChange}
-                    className="h-6 w-64 text-xs text-black"
+                    className="h-6 w-32 text-xs text-black"
                     placeholder="Number of bags"
                   />
                 </div>
@@ -1698,7 +1712,7 @@ export default function PurchaseReturnForm() {
                     name="wtPerBag"
                     value={formData.wtPerBag}
                     onChange={handleChange}
-                    className="h-6 w-64 text-xs text-black"
+                    className="h-6 w-32 text-xs text-black"
                     placeholder="Weight per bag"
                   />
                 </div>
@@ -1708,7 +1722,7 @@ export default function PurchaseReturnForm() {
                     name="bardanaType"
                     value={formData.bardanaType}
                     onChange={handleChange}
-                    className="h-6 w-64 text-xs text-black"
+                    className="h-6 w-32 text-xs text-black"
                     placeholder="Bardana type"
                   />
                 </div>
@@ -1718,7 +1732,7 @@ export default function PurchaseReturnForm() {
                     name="driverName"
                     value={formData.driverName}
                     onChange={handleChange}
-                    className="h-6 w-64 text-xs text-black"
+                    className="h-6 w-32 text-xs text-black"
                     placeholder="Driver name"
                   />
                 </div>
@@ -1728,20 +1742,21 @@ export default function PurchaseReturnForm() {
                     name="freight"
                     value={formData.freight}
                     onChange={handleChange}
-                    className="h-6 w-64 text-xs text-black"
+                    className="h-6 w-32 text-xs text-black"
                     placeholder="Freight amount"
                   />
                 </div>
               </div>
 
-              <div className="mt-4">
+              <div className="mt-0">
                 <Label className="text-xs text-black">Remarks</Label>
                 <Textarea
                   placeholder="Add remarks"
                   name="remarks"
                   value={formData.remarks}
                   onChange={handleChange}
-                  className="h-16 w-75 text-xs resize-none text-black placeholder:text-gray-500"
+                  className="h-8
+                   w-75 text-xs resize-none text-black placeholder:text-gray-500"
                 />
               </div>
             </div>

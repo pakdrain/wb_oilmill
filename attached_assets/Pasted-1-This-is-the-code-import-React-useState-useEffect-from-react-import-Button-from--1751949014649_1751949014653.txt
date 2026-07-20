@@ -1431,7 +1431,7 @@ const [selectedForm, setSelectedForm] = useState<'purchase' | 'sales' | 'offline
             },
             body: JSON.stringify({
               slipNo: formData.slipNo,
-              cameraIp: '10.10.10.146',
+              cameraIp: '192.168.6.108',
               cameraPort: 554
             }),
           });
@@ -1769,7 +1769,7 @@ const [selectedForm, setSelectedForm] = useState<'purchase' | 'sales' | 'offline
             },
             body: JSON.stringify({
               slipNo: formData.slipNo,
-              cameraIp: '10.10.10.146',
+              cameraIp: '192.168.6.108',
               cameraPort: 554
               }),
             });
@@ -1796,7 +1796,7 @@ const [selectedForm, setSelectedForm] = useState<'purchase' | 'sales' | 'offline
               },
               body: JSON.stringify({
                 slipNo: formData.slipNo,
-                cameraIp: '10.10.10.146',
+                cameraIp: '192.168.6.108',
                 cameraPort: 554
               }),
             });
@@ -3025,7 +3025,7 @@ const currentTime = new Date().toLocaleTimeString('en-GB', {
         <div className="flex gap-1 items-center">
           {/* Weight Display - positioned on left side with bolder text */}
           <div className="mr-2">
-            <WeightIndicator comPort="COM6" compact={true} />
+            <WeightIndicator comPort="COM4" compact={true} />
           </div>
           <button 
             className={`h-6 px-3 text-xs font-medium rounded transition-colors ${onlineMode === true ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-gray-300 hover:bg-gray-400 text-gray-600'}`}
@@ -5847,7 +5847,7 @@ const fetchDcData = async (dcNo: string, rowIndex: number) => {
         <div className="flex gap-1 items-center">
           {/* Weight Display - positioned on left side with bolder text */}
           <div className="mr-2">
-            <WeightIndicator comPort="COM6" compact={true} />
+            <WeightIndicator comPort="COM4" compact={true} />
           </div>
           <button 
             className={`h-6 px-3 text-xs font-medium rounded transition-colors ${onlineMode === true ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-gray-300 hover:bg-gray-400 text-gray-600'}`}

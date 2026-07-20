@@ -35,11 +35,23 @@ type RegisterData = z.infer<typeof registerSchema>;
 
 export default function Login() {
   const [, setLocation] = useLocation();
-  const { login } = useAuth();
+const { login, user } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [activeTab, setActiveTab] = useState("login");
   const [branches, setBranches] = useState<any[]>([]);
+
+
+
+
+
+// ✅ FIX: redirect AFTER user set
+  useEffect(() => {
+    if (user) {
+      console.log("✅ User mil gaya, redirect ho raha hai...");
+      setLocation("/");
+    }
+  }, [user]);
 
   // Fetch branches for registration dropdown
   useEffect(() => {
@@ -60,6 +72,7 @@ export default function Login() {
 
   // Login form
   const loginForm = useForm<LoginData>({
+    
     resolver: zodResolver(loginSchema),
     defaultValues: {
       userName: "",
@@ -80,34 +93,56 @@ export default function Login() {
 
   // Login mutation
   const loginMutation = useMutation({
-    mutationFn: async (data: LoginData) => {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+  mutationFn: async (data: LoginData) => {
+    console.log("🔄 1. Mutation function starting");
+    console.log("📝 Sending data:", { userName: data.userName, userPassword: "***" });
+    
+    const response = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    
+    console.log("📡 2. Response status:", response.status);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("❌ 3. Login failed with status:", response.status);
+      console.error("Error details:", errorText);
+      throw new Error("Login failed");
+    }
+    
+    const result = await response.json();
+    console.log("✅ 4. Login response received:", result);
+    return result;
+  },
+  onSuccess: (data) => {
+    console.log("🎉 5. onSuccess called with:", data);
+    
+    if (data.success) {
+      console.log("✅ 6. Login successful! User data:", data.user);
+      console.log("🔄 7. Calling login() from auth context");
+      
+      // Use auth context to login
+      login({
+        userid: data.user.userid,
+        userName: data.user.userName,
+        branchId: data.user.branchId,
+        branchName: data.user.branchName
       });
-      if (!response.ok) {
-        throw new Error("Login failed");
-      }
-      return response.json();
-    },
-    onSuccess: (data) => {
-      if (data.success) {
-        // Use auth context to login
-        login({
-          userid: data.user.userid,
-          userName: data.user.userName,
-          branchId: data.user.branchId,
-          branchName: data.user.branchName
-        });
 
-        setLocation('/purchase-form');
-      }
-    },
-    onError: (error) => {
-      console.error("Login error:", error);
-    },
-  });
+      console.log("🚀 8. Redirecting to /purchase-form");
+      setLocation('/');
+    } else {
+      console.warn("⚠️ 6. data.success is false, not redirecting");
+      console.log("Response data:", data);
+    }
+  },
+  onError: (error) => {
+    console.error("💥 5. onError called:", error);
+    console.log("Form values at time of error:", loginForm.getValues());
+  },
+});
 
   // Registration mutation
   const registerMutation = useMutation({
@@ -125,6 +160,7 @@ export default function Login() {
     },
     onSuccess: (data) => {
       if (data.success) {
+        console.log("LOGIN RESPONSE:", data);
         // Reset form and switch to login tab
         registerForm.reset();
         setActiveTab("login");
@@ -138,8 +174,13 @@ export default function Login() {
   });
 
   const onLogin = (data: LoginData) => {
-    loginMutation.mutate(data);
-  };
+  console.log("========== LOGIN ATTEMPT ==========");
+  console.log("Submitted Username:", data.userName);
+  console.log("Submitted Password:", data.userPassword);
+  console.log("Full Form Data:", data);
+  
+  loginMutation.mutate(data);
+};
 
   const onRegister = (data: RegisterData) => {
     registerMutation.mutate(data);
@@ -159,7 +200,7 @@ export default function Login() {
               <Scale className="h-8 w-8 text-white" />
             </div>
           </div>
-          <h1 className="text-3xl font-bold text-white mb-2">Weighbridge System</h1>
+          <h1 className="text-3xl font-bold text-white mb-2">Weighbridge System </h1>
           <p className="text-gray-400">Industrial Weight Management Platform</p>
         </div>
 
@@ -212,6 +253,7 @@ export default function Login() {
                     <Input
                       id="loginUsername"
                       type="text"
+                      autoComplete="off"
                       placeholder="Enter your username"
                       className="bg-monitoring-gray border-monitoring-gray text-white placeholder:text-gray-500 focus:border-monitoring-blue"
                       {...loginForm.register("userName")}
@@ -229,6 +271,7 @@ export default function Login() {
                       <Input
                         id="loginPassword"
                         type={showPassword ? "text" : "password"}
+                        autoComplete="off"
                         placeholder="Enter your password"
                         className="bg-monitoring-gray border-monitoring-gray text-white placeholder:text-gray-500 focus:border-monitoring-blue pr-10"
                         {...loginForm.register("userPassword")}
@@ -305,6 +348,7 @@ export default function Login() {
                     <Input
                       id="registerUsername"
                       type="text"
+                      autoComplete="off"
                       placeholder="Choose a username"
                       className="bg-monitoring-gray border-monitoring-gray text-white placeholder:text-gray-500 focus:border-monitoring-blue"
                       {...registerForm.register("userName")}
@@ -322,6 +366,7 @@ export default function Login() {
                       <Input
                         id="registerPassword"
                         type={showPassword ? "text" : "password"}
+                        autoComplete="off"
                         placeholder="Create a password"
                         className="bg-monitoring-gray border-monitoring-gray text-white placeholder:text-gray-500 focus:border-monitoring-blue pr-10"
                         {...registerForm.register("userPassword")}
@@ -353,6 +398,7 @@ export default function Login() {
                       <Input
                         id="confirmPassword"
                         type={showConfirmPassword ? "text" : "password"}
+                        autoComplete="off"
                         placeholder="Confirm your password"
                         className="bg-monitoring-gray border-monitoring-gray text-white placeholder:text-gray-500 focus:border-monitoring-blue pr-10"
                         {...registerForm.register("confirmPassword")}

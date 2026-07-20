@@ -19,10 +19,20 @@ import {
   ChevronRight,
   Users,
   Download,
+  Truck,
+  Receipt,
+  CreditCard,
+  Banknote,
 } from "lucide-react";
+import { WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
+
+// Add prop interface
+interface SidebarProps {
+  onToggleCollapse?: (collapsed: boolean) => void;
+}
 
 const getNavigation = (isAdmin: boolean) => {
   const baseNavigation = [
@@ -61,41 +71,55 @@ const getNavigation = (isAdmin: boolean) => {
         },
       ],
     },
-
-    {
-      name: "Transection",
-      icon: ShoppingCart,
-      hasSubItems: true,
-      subItems: [
-        {
-          name: "Freight Voucher",
-          href: "/voucher-view",
-          icon: FileText,
-        },
-      ],
-    },
-    // { name: "Voucher Entry", href: "/voucher-entry", icon: FileText },
-    // { name: "Voucher View", href: "/voucher-view", icon: FileText },
+    // {
+    //   name: "Freight Voucher",
+    //   href: "/voucher-view",
+    //   icon: FileText,
+    // },
+    // {
+    //   name: "Transaction",
+    //   icon: ShoppingCart,
+    //   hasSubItems: true,
+    //   subItems: [
+    //     {
+    //       name: "Feed Freight Voucher",
+    //       href: "/cash-receipt-vouchers?type=FFCPV",
+    //       icon: Receipt,
+    //     },
+    //     {
+    //       name: "Cash Receipt Vouchers",
+    //       href: "/cash-receipt-vouchers?type=MCRV",
+    //       icon: Banknote,
+    //     },
+    //     {
+    //       name: "Cash Payment Vouchers",
+    //       href: "/cash-receipt-vouchers?type=MCPV",
+    //       icon: Banknote,
+    //     },
+    //     {
+    //       name: "Bank Payment Vouchers",
+    //       href: "/cash-receipt-vouchers?type=MBPV",
+    //       icon: CreditCard,
+    //     },
+    //     {
+    //       name: "Bank Receipt Vouchers",
+    //       href: "/cash-receipt-vouchers?type=MBRV",
+    //       icon: CreditCard,
+    //     },
+    //   ],
+    // },
     { name: "Get Data", href: "/get-data", icon: Download },
-    {
-      name: "Return Form",
-      icon: RotateCcw,
-      hasSubItems: true,
-      subItems: [
-        {
-          name: "Sale Return",
-          href: "/sales-return",
-          icon: RotateCcw,
-        },
-        {
-          name: "Purchase Return",
-          href: "/purchase-return?type=online",
-          icon: RotateCcw,
-        },
-      ],
-    },
-    { name: "Sale Node", href: "/sale-node", icon: Network },
+    // {
+    //   name: "Sale Return",
+    //   href: "/sales-return",
+    //   icon: RotateCcw,
+    // },
+    //{ name: "Sold Note", href: "/sold-note", icon: Network },
+    { name: "Offline Entries", href: "/offline-page", icon: WifiOff },
     { name: "Reports", href: "/reports", icon: BarChart3 },
+   // { name: "CashReports", href: "/cash-report", icon: BarChart3 },
+   // { name: "BankReports", href: "/bank-reports", icon: BarChart3 },
+    { name: "General Report", href: "/reportpage", icon: BarChart3 },
     { name: "Camera Settings", href: "/settings", icon: Settings },
     {
       name: "Weighbridge Settings",
@@ -115,12 +139,56 @@ const getNavigation = (isAdmin: boolean) => {
   return baseNavigation;
 };
 
-export default function Sidebar() {
+// Create a context to share sidebar state
+export const SidebarContext = React.createContext({
+  isCollapsed: false,
+  setIsCollapsed: (collapsed: boolean) => {},
+});
+
+export default function Sidebar({ onToggleCollapse }: SidebarProps = {}) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [expandedItems, setExpandedItems] = useState<string[]>([]);
-  const [, setLocation] = useLocation(); // unused now
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [expandedItem, setExpandedItem] = useState<string | null>(null);
+  const [setLocation] = useLocation();
   const { user, logout } = useAuth();
   const sidebarRef = useRef(null);
+
+  // Load sidebar state from localStorage
+  useEffect(() => {
+    const storedExpandedItem = localStorage.getItem("expandedItem");
+    if (storedExpandedItem) {
+      setExpandedItem(storedExpandedItem);
+    }
+
+    const storedSidebarState = localStorage.getItem("sidebarCollapsed");
+    if (storedSidebarState) {
+      const collapsed = storedSidebarState === "true";
+      setIsCollapsed(collapsed);
+      
+      // Notify parent component
+      if (onToggleCollapse) {
+        onToggleCollapse(collapsed);
+      }
+      
+      // Update body class
+      if (collapsed) {
+        document.body.classList.add("sidebar-collapsed");
+      } else {
+        document.body.classList.remove("sidebar-collapsed");
+      }
+    }
+  }, [onToggleCollapse]);
+
+  // Save sidebar state to localStorage
+  useEffect(() => {
+    localStorage.setItem("sidebarCollapsed", isCollapsed.toString());
+  }, [isCollapsed]);
+
+  useEffect(() => {
+    if (expandedItem !== null) {
+      localStorage.setItem("expandedItem", expandedItem);
+    }
+  }, [expandedItem]);
 
   const isActive = (href: string) => {
     try {
@@ -138,39 +206,13 @@ export default function Sidebar() {
   const isAdmin = user?.userName === "admin" || user?.userid === 1;
   const navigation = getNavigation(isAdmin);
 
-  useEffect(() => {
-    const storedExpandedItems = localStorage.getItem("expandedItems");
-    if (storedExpandedItems) {
-      try {
-        const parsedItems = JSON.parse(storedExpandedItems);
-        setExpandedItems(Array.isArray(parsedItems) ? parsedItems : []);
-      } catch {
-        setExpandedItems([]);
-      }
-    }
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem("expandedItems", JSON.stringify(expandedItems));
-  }, [expandedItems]);
-
   const toggleExpanded = (itemName: string) => {
-    setExpandedItems((prev) => {
-      const expandableItems = ["Purchase Form", "Sale Form"];
-      if (prev.includes(itemName)) {
-        return prev.filter((name) => name !== itemName);
-      } else {
-        const filteredItems = prev.filter(
-          (name) => !expandableItems.includes(name),
-        );
-        return [...filteredItems, itemName];
-      }
-    });
+    setExpandedItem((prev) => (prev === itemName ? null : itemName));
   };
 
   const handleNavigation = (href: string) => {
     if (href !== window.location.pathname + window.location.search) {
-      window.location.href = href; // 👈 Force reload
+      window.location.href = href;
     }
     setIsMobileMenuOpen(false);
   };
@@ -180,10 +222,53 @@ export default function Sidebar() {
     setIsMobileMenuOpen(false);
   };
 
+  const toggleSidebar = () => {
+    if (window.innerWidth < 1024) {
+      // Mobile behavior
+      setIsMobileMenuOpen(!isMobileMenuOpen);
+    } else {
+      // Desktop behavior - toggle collapse
+      const newCollapsedState = !isCollapsed;
+      setIsCollapsed(newCollapsedState);
+      
+      // Notify parent component
+      if (onToggleCollapse) {
+        onToggleCollapse(newCollapsedState);
+      }
+      
+      // Update body class for CSS adjustments
+      if (newCollapsedState) {
+        document.body.classList.add("sidebar-collapsed");
+      } else {
+        document.body.classList.remove("sidebar-collapsed");
+      }
+    }
+  };
+
+  // Handle window resize
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 1024) {
+        setIsMobileMenuOpen(false);
+      } else {
+        setIsCollapsed(false);
+        document.body.classList.remove("sidebar-collapsed");
+        
+        // Notify parent component
+        if (onToggleCollapse) {
+          onToggleCollapse(false);
+        }
+      }
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [onToggleCollapse]);
+
   return (
     <>
       {/* Mobile menu button */}
-      <div className="lg:hidden fixed top-4 left-4 z-50">
+      <div className="lg:hidden fixed top-0 left-0 z-50">
         <Button
           variant="outline"
           size="sm"
@@ -202,25 +287,45 @@ export default function Sidebar() {
       <div
         ref={sidebarRef}
         className={cn(
-          "fixed inset-y-0 left-0 z-40 w-64 bg-monitoring-slate border-r border-monitoring-gray transform transition-transform duration-200 ease-in-out lg:translate-x-0",
+          "fixed inset-y-0 left-0 z-40 bg-monitoring-slate border-r border-monitoring-gray transform transition-all duration-300 ease-in-out",
+          // Mobile behavior
           isMobileMenuOpen
-            ? "translate-x-0"
+            ? "translate-x-0 w-64"
             : "-translate-x-full lg:translate-x-0",
+          // Desktop behavior
+          !isCollapsed ? "lg:w-64" : "lg:w-0 lg:border-r-0"
         )}
       >
-        <div className="flex flex-col h-full">
-          {/* Header */}
-          <div className="flex items-center justify-between p-6 border-b border-monitoring-gray">
-            <h1 className="text-xl font-bold text-white">Weighbridge System</h1>
+        <div
+          className={cn(
+            "flex flex-col h-full transition-opacity duration-300",
+            isCollapsed ? "opacity-0 lg:pointer-events-none" : "opacity-100"
+          )}
+          style={{ width: "256px" }}
+        >
+          {/* Header with Close Button */}
+          <div className="flex items-center justify-between py-2 px-3 border-b border-monitoring-gray">
+            <h1 className="text-lg font-bold text-white truncate">
+              Weighbridge System
+            </h1>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={toggleSidebar}
+              className="text-white hover:bg-monitoring-gray hover:text-white p-1 h-8 w-8 flex-shrink-0"
+              aria-label={isCollapsed ? "Open sidebar" : "Close sidebar"}
+            >
+              <X className="h-4 w-4" />
+            </Button>
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 p-4 space-y-1">
+          <nav className="flex-1 p-2 space-y-0 overflow-y-auto">
             {navigation.map((item) => {
               if (item.hasSubItems) {
-                const isExpanded = expandedItems.includes(item.name);
+                const isExpanded = expandedItem === item.name;
                 const hasActiveSubItem = item.subItems?.some((subItem) =>
-                  isActive(subItem.href),
+                  isActive(subItem.href)
                 );
 
                 return (
@@ -228,15 +333,15 @@ export default function Sidebar() {
                     <Button
                       variant="ghost"
                       className={cn(
-                        "w-full justify-between text-left h-12 px-4",
+                        "w-full justify-between text-left h-9 px-2 text-sm",
                         hasActiveSubItem
                           ? "bg-blue-600 text-white hover:bg-blue-700"
-                          : "text-gray-300 hover:bg-monitoring-gray hover:text-white",
+                          : "text-gray-300 hover:bg-monitoring-gray hover:text-white"
                       )}
                       onClick={() => toggleExpanded(item.name)}
                     >
                       <div className="flex items-center">
-                        <item.icon className="mr-3 h-5 w-5" />
+                        <item.icon className="mr-2 h-4 w-4" />
                         {item.name}
                       </div>
                       {isExpanded ? (
@@ -247,7 +352,7 @@ export default function Sidebar() {
                     </Button>
 
                     {isExpanded && (
-                      <div className="ml-4 space-y-1">
+                      <div className="ml-2 space-y-1">
                         {item.subItems?.map((subItem) => {
                           const isSubActive = isActive(subItem.href);
 
@@ -256,14 +361,14 @@ export default function Sidebar() {
                               key={subItem.name}
                               variant="ghost"
                               className={cn(
-                                "w-full justify-start text-left h-10 px-4 ml-2",
+                                "w-full justify-start text-left h-8 px-2 ml-2 text-sm",
                                 isSubActive
                                   ? "bg-blue-600 text-white hover:bg-blue-700"
-                                  : "text-gray-400 hover:bg-monitoring-gray/70 hover:text-white",
+                                  : "text-gray-400 hover:bg-monitoring-gray/70 hover:text-white"
                               )}
                               onClick={() => handleNavigation(subItem.href)}
                             >
-                              <subItem.icon className="mr-3 h-4 w-4" />
+                              <subItem.icon className="mr-2 h-4 w-4" />
                               {subItem.name}
                             </Button>
                           );
@@ -280,14 +385,14 @@ export default function Sidebar() {
                     key={item.name}
                     variant="ghost"
                     className={cn(
-                      "w-full justify-start text-left h-12 px-4",
+                      "w-full justify-start text-left h-9 px-3 text-sm",
                       isItemActive
                         ? "bg-blue-600 text-white hover:bg-blue-700"
-                        : "text-gray-300 hover:bg-monitoring-gray hover:text-white",
+                        : "text-gray-300 hover:bg-monitoring-gray hover:text-white"
                     )}
                     onClick={() => handleNavigation(item.href ?? "")}
                   >
-                    <item.icon className="mr-3 h-5 w-5" />
+                    <item.icon className="mr-3 h-4 w-4" />
                     {item.name}
                   </Button>
                 );
@@ -295,9 +400,9 @@ export default function Sidebar() {
             })}
           </nav>
 
-          {/* User Info & Logout */}
-          <div className="p-4 border-t border-monitoring-gray space-y-3">
-            <div className="flex items-center space-x-3 px-2">
+          {/* User Info and Logout */}
+          <div className="p-2 border-t border-monitoring-gray mt-auto">
+            <div className="flex items-center space-x-3 px-1 mb-1">
               <div className="flex items-center justify-center w-8 h-8 bg-monitoring-blue rounded-full">
                 <User className="h-4 w-4 text-white" />
               </div>
@@ -308,20 +413,41 @@ export default function Sidebar() {
                 <p className="text-xs text-gray-400">Authenticated</p>
               </div>
             </div>
+
             <Button
               variant="ghost"
               onClick={handleLogout}
-              className="w-full justify-start text-left h-10 px-2 text-gray-300 hover:bg-red-600 hover:text-white"
+              className="w-full justify-start text-left h-8 px-2 text-sm text-gray-300 hover:bg-red-600 hover:text-white"
             >
               <LogOut className="mr-3 h-4 w-4" />
               Logout
             </Button>
-            <div className="text-xs text-gray-400 text-center pt-2">
-              Live Camera Monitoring System
-            </div>
           </div>
         </div>
       </div>
+
+      {/* Sidebar toggle button when collapsed on desktop */}
+      {isCollapsed && (
+        <div className="hidden lg:block fixed top-4 left-4 z-40">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setIsCollapsed(false);
+              document.body.classList.remove("sidebar-collapsed");
+              
+              // Notify parent component
+              if (onToggleCollapse) {
+                onToggleCollapse(false);
+              }
+            }}
+            className="bg-monitoring-slate border-monitoring-gray text-white hover:bg-monitoring-gray"
+            aria-label="Open sidebar"
+          >
+            <Menu className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
 
       {/* Mobile menu overlay */}
       {isMobileMenuOpen && (

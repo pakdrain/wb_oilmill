@@ -12,13 +12,16 @@ import { useStream } from "@/hooks/use-stream";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useConfig } from "@/lib/config-context";
+// ✅ Import ComPort Context
+import { useComPort } from "@/Comportcontext";
 
 export default function CameraMonitor() {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [firstWeight, setFirstWeight] = useState<number | null>(null);
   const [secondWeight, setSecondWeight] = useState<number | null>(null);
   const { cameraIp, cameraPort } = useConfig();
-
+  const { comPort } = useComPort();
+  
   // Fetch default camera information
   const { data: camera, isLoading: cameraLoading } = useQuery({
     queryKey: ['/api/cameras/1'],
@@ -114,20 +117,61 @@ export default function CameraMonitor() {
 
   return (
     <div className="min-h-screen bg-monitoring-dark overflow-hidden relative">
-      {/* Purchase Button - Top Left */}
-      <div className="absolute top-8 left-8 z-50">
-        <Link href="/purchase-form">
-          <Button className="bg-monitoring-blue hover:bg-monitoring-blue/90 text-white font-semibold px-6 py-2 rounded-lg shadow-lg">
-            <FileText className="h-5 w-5 mr-2" />
-            Purchase
-          </Button>
-        </Link>
-      </div>
+{/* Top Left Buttons */}
+<div className="absolute top-8 left-6 z-50 flex gap-8">
+  {/* Column 1: Purchase & Sales */}
+  <div className="flex flex-col gap-3">
+    <Link href="/purchase-form">
+      <Button className="bg-monitoring-blue hover:bg-monitoring-blue/90 text-white font-semibold px-6 py-2 rounded-lg shadow-lg flex items-center">
+        <FileText className="h-5 w-5 mr-2" />
+        Purchase
+      </Button>
+    </Link>
 
-      {/* Weight Display Table - Upper Right Corner */}
+    <Link href="/sales-form">
+      <Button className="bg-monitoring-blue hover:bg-monitoring-blue/90 text-white font-semibold px-6 py-2 rounded-lg shadow-lg flex items-center">
+        <FileText className="h-5 w-5 mr-2" />
+        Sale
+      </Button>
+    </Link>
+
+    {/* <Link href="/sales-return">
+      <Button className="bg-monitoring-blue hover:bg-monitoring-blue/90 text-white font-semibold px-6 py-2 rounded-lg shadow-lg flex items-center">
+        <FileText className="h-5 w-5 mr-2" />
+        Sale Return
+      </Button>
+    </Link> */}
+{/* 
+    <Link href="/sold-note">
+      <Button className="bg-monitoring-blue hover:bg-monitoring-blue/90 text-white font-semibold px-6 py-2 rounded-lg shadow-lg flex items-center">
+        <FileText className="h-5 w-5 mr-2" />
+        Sold Note
+      </Button>
+    </Link> */}
+  </div>
+
+  {/* Column 2: Reports */}
+  <div className="flex flex-col gap-3">
+    <Link href="/reports">
+      <Button className="bg-monitoring-blue hover:bg-monitoring-blue/90 text-white font-semibold px-6 py-2 rounded-lg shadow-lg flex items-center">
+        <FileText className="h-5 w-5 mr-2" />
+        Report
+      </Button>
+    </Link>
+
+    <Link href="/offline-page">
+      <Button className="bg-monitoring-blue hover:bg-monitoring-blue/90 text-white font-semibold px-6 py-2 rounded-lg shadow-lg flex items-center">
+        <FileText className="h-5 w-5 mr-2" />
+        Offline Reports
+      </Button>
+    </Link>
+  </div>
+</div>
+
+      {/* Weight Display Table - Upper Right Corner
       <div className="absolute top-8 right-8 z-50">
         <div className="bg-white border-2 border-gray-300 rounded-lg shadow-lg p-4 w-64">
-          {/* Header */}
+     
           <div className="grid grid-cols-3 gap-2 mb-2">
             <div className="bg-gray-100 border border-gray-400 p-1 text-center text-xs font-semibold text-black">
               Slip No
@@ -140,7 +184,7 @@ export default function CameraMonitor() {
             </div>
           </div>
 
-          {/* Values */}
+         
           <div className="grid grid-cols-3 gap-2 mb-4">
             <div className="border border-gray-400 p-1 text-center text-xs bg-white text-black">
               4451
@@ -151,9 +195,8 @@ export default function CameraMonitor() {
             <div className="border border-gray-400 p-1 text-center text-xs bg-white text-blue-600 font-semibold">
               PURCHASE
             </div>
-          </div>
-
-          {/* Weight Display Section */}
+          </div> 
+       
           <div className="space-y-2">
             <div className="grid grid-cols-2 gap-2">
               <div className="bg-blue-50 border border-blue-300 p-2 text-center">
@@ -170,7 +213,7 @@ export default function CameraMonitor() {
               </div>
             </div>
             
-            {/* Net Weight */}
+        
             <div className="bg-green-50 border border-green-300 p-2 text-center">
               <div className="text-xs font-semibold text-green-800 mb-1">Net Weight</div>
               <div className="text-lg font-bold text-green-900">
@@ -182,17 +225,16 @@ export default function CameraMonitor() {
             </div>
           </div>
 
-          {/* Load Data Button */}
           <button className="w-full mt-4 bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 text-xs rounded">
             Load Data
           </button>
         </div>
-      </div>
+      </div> */}
 
-      {/* Weight Region - Full screen with camera embedded inside */}
-      <div className="h-full flex flex-col items-center justify-center p-8">
-        
-        {/* Embedded Camera View - Small size inside weight region */}
+
+      {/* <div className="h-full flex flex-col items-center justify-center p-8"> 
+      
+       
         <div className="w-40 h-30 mb-8 border border-monitoring-gray rounded overflow-hidden">
           <VideoStreamFullscreen
             camera={cameraData}
@@ -201,10 +243,10 @@ export default function CameraMonitor() {
           />
         </div>
         
-        {/* Weight Display - Main focus, clean interface */}
-        <WeightIndicator comPort="COM6" />
+  
+            <WeightIndicator comPort={comPort} />
         
-      </div>
-    </div>
+      </div> */}
+    </div> 
   );
 }

@@ -17,6 +17,7 @@ import { useAuth } from "@/lib/auth";
 import WeightIndicator from "@/components/weight-indicator";
 import VideoStreamFullscreen from "@/components/video-stream-fullscreen";
 import { useQuery } from "@tanstack/react-query";
+import { useComPort } from "@/Comportcontext";
 
 export default function EditRecord() {
   const [location, setLocation] = useLocation();
@@ -65,6 +66,8 @@ export default function EditRecord() {
     offlineEntry: "",
   });
 
+  const { comPort } = useComPort();
+  
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -280,7 +283,7 @@ export default function EditRecord() {
           </Button>
         </div>
         <div className="flex gap-1 items-center">
-          <WeightIndicator comPort="COM6" compact={true} />
+      <WeightIndicator comPort={comPort} compact={true} />
           <button className="h-6 px-3 text-xs font-medium rounded transition-colors bg-green-500 hover:bg-green-600 text-white">
             ONLINE
           </button>

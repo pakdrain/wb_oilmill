@@ -3,7 +3,6 @@ import { registerRoutes } from "./routes";
 import { addSalesRoute } from "./routes-simple";
 import { setupVite, serveStatic, log } from "./vite";
 import { SerialPort } from 'serialport';
-import { ReadlineParser } from '@serialport/parser-readline';
 
 // Ensure environment variables are loaded
 import { config } from 'dotenv';
@@ -32,17 +31,23 @@ import {
 initializeWeightState();
 
 let serialPort: SerialPort | null = null;
+let requestInterval: NodeJS.Timeout | null = null;
 
 // Initialize serial port connection for weight indicator
 async function connectToWeightScale() {
   try {
-    // First, list available ports to help with debugging
     const { SerialPort: SerialPortStatic } = await import('serialport');
     const ports = await SerialPortStatic.list();
     log('📋 Available serial ports:');
     ports.forEach(port => {
       log(`  - ${port.path}: ${port.manufacturer || 'Unknown'}`);
     });
+
+    // ✅ Agar port already open hai toh reconnect mat karo
+    if (serialPort && serialPort.isOpen) {
+      log('✅ Port already open, skipping reconnect');
+      return;
+    }
 
     serialPort = new SerialPort({
       path: currentComPort,
@@ -52,16 +57,29 @@ async function connectToWeightScale() {
       stopBits: 1,
     });
 
-    const parser = serialPort.pipe(new ReadlineParser({ delimiter: '\r\n' }));
-
     serialPort.on('open', () => {
       log(`✅ Connected to ${currentComPort} weight indicator`);
       updateConnectionStatus(true);
+
+      if (requestInterval) {
+        clearInterval(requestInterval);
+        requestInterval = null;
+      }
+
+      requestInterval = setInterval(() => {
+        if (serialPort && serialPort.isOpen) {
+          serialPort.write("P\r\n");
+        }
+      }, 500);
     });
 
     serialPort.on('error', (err) => {
       log(`❌ Serial port error: ${err.message}`);
       updateConnectionStatus(false);
+      if (requestInterval) {
+        clearInterval(requestInterval);
+        requestInterval = null;
+      }
     });
 
     serialPort.on('close', () => {
@@ -69,15 +87,27 @@ async function connectToWeightScale() {
       updateConnectionStatus(false);
       updateWeight('0.00');
       updateUnit('kg');
+      if (requestInterval) {
+        clearInterval(requestInterval);
+        requestInterval = null;
+      }
     });
 
-    // Parse incoming weight data
-    parser.on('data', (data) => {
-      const weightData = parseWeightData(data);
-      if (weightData) {
-        updateWeight(weightData.weight);
-        updateUnit(weightData.unit);
-        log(`📊 Weight: ${weightData.weight} ${weightData.unit}`);
+    serialPort.on('data', (data) => {
+      const rawString = data.toString('ascii');
+      log(`📥 Raw received: ${rawString}`);
+
+      const match = rawString.match(/=(-?\d+)/);
+      if (match) {
+        let weightValue = parseInt(match[1], 10);
+        if (Math.abs(weightValue).toString().length >= 6) {
+          weightValue = weightValue / 1000;
+        }
+        updateWeight(weightValue.toFixed(3));
+        updateUnit('kg');
+        log(`✅ WEIGHT UPDATED: ${weightValue.toFixed(3)} kg`);
+      } else {
+        log(`⚠️ No weight pattern found in: ${rawString}`);
       }
     });
 
@@ -87,58 +117,22 @@ async function connectToWeightScale() {
   }
 }
 
-// Parse weight data from serial input
-function parseWeightData(rawData: string) {
-  try {
-    const data = rawData.toString().trim();
-    log(`📥 Raw data received: ${data}`);
-
-    let weight = '0.00';
-    let unit = 'kg';
-
-    // Parse different weight indicator formats
-    if (data.includes('ST,GS,')) {
-      // Pattern for Comm Operator format: "ST,GS,     5.00 kg"
-      const match = data.match(/ST,GS,\s*([0-9]+\.?[0-9]*)\s*(kg|g|lb)/i);
-      if (match) {
-        weight = parseFloat(match[1]).toFixed(2);
-        unit = match[2].toLowerCase();
-      }
-    } else if (data.match(/[+-]?[0-9]+\.?[0-9]*\s*(kg|g|lb)/i)) {
-      // Simple format: "5.00 kg"
-      const match = data.match(/([+-]?[0-9]+\.?[0-9]*)\s*(kg|g|lb)/i);
-      if (match) {
-        weight = parseFloat(match[1]).toFixed(2);
-        unit = match[2].toLowerCase();
-      }
-    } else if (data.match(/[+-]?[0-9]+\.?[0-9]*kg/i)) {
-      // Compact format: "+0005.00kg"
-      const match = data.match(/([+-]?[0-9]+\.?[0-9]*)kg/i);
-      if (match) {
-        weight = parseFloat(match[1]).toFixed(2);
-        unit = 'kg';
-      }
-    }
-
-    return { weight, unit };
-  } catch (error: any) {
-    log(`❌ Error parsing weight data: ${error.message}`);
-    return null;
-  }
-}
-
 // Weight API endpoints
 app.post('/api/weight/connect', (req, res) => {
   const { port, baudRate } = req.body;
-  log(`🔌 Connecting to ${port || currentComPort} at ${baudRate || 9600} baud...`);
+  log(`🔌 Connect request for ${port || currentComPort}`);
   
-  if (!isPortConnected) {
+  // ✅ Sirf tab connect karo jab port band ho
+  if (!serialPort || !serialPort.isOpen) {
+    log('📡 Port not open, connecting...');
     connectToWeightScale();
+  } else {
+    log('✅ Port already open, skipping reconnect');
   }
   
   res.json({ 
     success: true, 
-    message: `Connecting to ${port || currentComPort}`,
+    message: `Connected to ${port || currentComPort}`,
     connected: isPortConnected 
   });
 });
@@ -189,27 +183,22 @@ app.use((req, res, next) => {
     throw err;
   });
 
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
   if (app.get("env") === "development") {
     await setupVite(app, server);
   } else {
     serveStatic(app);
   }
 
-  // ALWAYS serve the app on port 5000
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
   const port = 5000;
-  server.listen(port, '0.0.0.0', () => {
-    log(`serving on port ${port}`);
-    log(`📡 Attempting to connect to ${currentComPort} weight indicator...`);
+  const host = '10.10.10.151';
+
+  server.listen(port, host, () => {
+    log(`✅ Server running at http://${host}:${port}`);
+    log(`📡 Connecting to ${currentComPort} weight indicator...`);
     
-    // Auto-connect to weight scale on startup
     setTimeout(() => {
       connectToWeightScale();
-    }, 2000); // Wait 2 seconds after server starts
+    }, 2000);
   }).on('error', (err: any) => {
     if (err.code === 'EADDRINUSE') {
       log(`❌ Port ${port} is already in use. Attempting to kill existing process...`);
@@ -218,5 +207,13 @@ app.use((req, res, next) => {
       log(`❌ Server error: ${err.message}`);
       throw err;
     }
+  });
+
+  // Graceful shutdown
+  process.on("SIGINT", () => {
+    log('\n🛑 Shutting down...');
+    if (requestInterval) clearInterval(requestInterval);
+    if (serialPort && serialPort.isOpen) serialPort.close();
+    process.exit(0);
   });
 })();

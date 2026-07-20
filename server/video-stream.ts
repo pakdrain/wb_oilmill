@@ -17,6 +17,8 @@ class VideoStreamService {
     }
   }
 
+
+  
   async startStream(cameraId: number): Promise<string | null> {
     try {
       const camera = await storage.getCamera(cameraId);
@@ -38,15 +40,19 @@ class VideoStreamService {
 
       console.log(`Starting FFmpeg stream for camera ${cameraId}: ${camera.rtspUrl}`);
 
+
+//const ffmpegPath = 'C:\\Users\\Admin\\Downloads\\ffmpeg-8.1-essentials_build\\bin\\ffmpeg.exe';
+
+
       // FFmpeg command to convert RTSP to MJPEG stream for better browser compatibility
-      const ffmpeg = spawn('ffmpeg', [
-        '-rtsp_transport', 'tcp',
-        '-i', camera.rtspUrl,
-        '-q:v', '5',  // Good quality
-        '-r', '15',   // 15 FPS for smooth streaming
-        '-f', 'mjpeg',
-        '-'  // Output to stdout
-      ]);
+  const ffmpeg = spawn('ffmpeg', [
+  '-rtsp_transport', 'tcp',
+  '-i', camera.rtspUrl,
+  '-q:v', '5',  
+  '-r', '15',   
+  '-f', 'mjpeg',
+  '-'  
+]);
 
       ffmpeg.stdout.on('data', (data) => {
         console.log(`FFmpeg stdout: ${data}`);
@@ -111,76 +117,88 @@ class VideoStreamService {
 
   registerRoutes(app: Express): void {
     // MJPEG stream endpoint
-    app.get('/api/stream/:cameraId/mjpeg', async (req: Request, res: Response) => {
-      const cameraId = parseInt(req.params.cameraId);
-      
-      try {
-        const camera = await storage.getCamera(cameraId);
-        if (!camera) {
-          return res.status(404).json({ error: 'Camera not found' });
-        }
 
-        console.log(`Starting MJPEG stream for camera ${cameraId}`);
+    
+  // Inside registerRoutes() MJPEG endpoint
+app.get('/api/stream/:cameraId/mjpeg', async (req: Request, res: Response) => {
+  const cameraId = parseInt(req.params.cameraId);
 
-        // Set proper headers for MJPEG stream
-        res.writeHead(200, {
-          'Content-Type': 'multipart/x-mixed-replace; boundary=--myboundary',
-          'Cache-Control': 'no-store, no-cache, must-revalidate, pre-check=0, post-check=0, max-age=0',
-          'Pragma': 'no-cache',
-          'Connection': 'close',
-          'Expires': 'Mon, 3 Jan 2000 12:34:56 GMT',
-          'Access-Control-Allow-Origin': '*'
-        });
+  try {
+    const camera = await storage.getCamera(cameraId);
+    if (!camera) {
+      return res.status(404).json({ error: 'Camera not found' });
+    }
 
-        // Start FFmpeg process with compatible settings for local environment
-        const ffmpeg = spawn('ffmpeg', [
-          '-fflags', '+genpts',
-          '-rtsp_transport', 'tcp',
-          '-analyzeduration', '3000000',
-          '-probesize', '3000000',
-          '-i', camera.rtspUrl,
-          '-f', 'mjpeg',
-          '-q:v', '5',
-          '-r', '8',
-          '-s', '640x480',
-          '-vf', 'fps=8',
-          '-'
-        ]);
+    console.log(`Starting MJPEG stream for camera ${cameraId}`);
 
-        // Handle FFmpeg output
-        ffmpeg.stdout.on('data', (data: Buffer) => {
-          res.write('--myboundary\r\n');
-          res.write('Content-Type: image/jpeg\r\n');
-          res.write(`Content-Length: ${data.length}\r\n\r\n`);
-          res.write(data);
-          res.write('\r\n');
-        });
+    // Set proper headers for MJPEG stream
+    res.writeHead(200, {
+      'Content-Type': 'multipart/x-mixed-replace; boundary=--myboundary',
+      'Cache-Control': 'no-store, no-cache, must-revalidate, pre-check=0, post-check=0, max-age=0',
+      'Pragma': 'no-cache',
+      'Connection': 'close',
+      'Expires': 'Mon, 3 Jan 2000 12:34:56 GMT',
+      'Access-Control-Allow-Origin': '*'
+    });
 
-        ffmpeg.stderr.on('data', (data) => {
-          console.log(`FFmpeg stderr: ${data}`);
-        });
+    // Start FFmpeg process
+    const ffmpeg = spawn('ffmpeg', [
+      '-rtsp_transport', 'tcp',
+      '-i', camera.rtspUrl,
+      '-r', '15',                  // FPS
+      '-q:v', '5',                 // JPEG quality
+      '-pix_fmt', 'yuvj420p',      // MJPEG compatible pixel format
+      '-f', 'mjpeg',
+      '-'                          // output to stdout
+    ]);
 
-        ffmpeg.on('close', () => {
-          console.log('FFmpeg process closed');
-          res.end();
-        });
+    let frameBuffer = Buffer.alloc(0);
 
-        ffmpeg.on('error', (error) => {
-          console.error('FFmpeg error:', error);
-          res.status(500).end();
-        });
+    ffmpeg.stdout.on('data', (chunk: Buffer) => {
+      frameBuffer = Buffer.concat([frameBuffer, chunk]);
 
-        // Clean up when client disconnects
-        req.on('close', () => {
-          console.log('Client disconnected, stopping FFmpeg');
-          ffmpeg.kill('SIGTERM');
-        });
+      let start = frameBuffer.indexOf(Buffer.from([0xff, 0xd8]));
+      let end = frameBuffer.indexOf(Buffer.from([0xff, 0xd9]), start + 1);
 
-      } catch (error) {
-        console.error('Error starting MJPEG stream:', error);
-        res.status(500).json({ error: 'Failed to start stream' });
+      while (start !== -1 && end !== -1) {
+        const jpegFrame = frameBuffer.slice(start, end + 2);
+        res.write('--myboundary\r\n');
+        res.write('Content-Type: image/jpeg\r\n');
+        res.write(`Content-Length: ${jpegFrame.length}\r\n\r\n`);
+        res.write(jpegFrame);
+        res.write('\r\n');
+
+        frameBuffer = frameBuffer.slice(end + 2);
+        start = frameBuffer.indexOf(Buffer.from([0xff, 0xd8]));
+        end = frameBuffer.indexOf(Buffer.from([0xff, 0xd9]), start + 1);
       }
     });
+
+    ffmpeg.stderr.on('data', (data) => {
+      console.log(`FFmpeg stderr: ${data}`);
+    });
+
+    ffmpeg.on('close', () => {
+      console.log('FFmpeg process closed');
+      res.end();
+    });
+
+    ffmpeg.on('error', (error) => {
+      console.error('FFmpeg error:', error);
+      res.status(500).end();
+    });
+
+    // Clean up when client disconnects
+    req.on('close', () => {
+      console.log('Client disconnected, stopping FFmpeg');
+      ffmpeg.kill('SIGTERM');
+    });
+
+  } catch (error) {
+    console.error('Error starting MJPEG stream:', error);
+    res.status(500).json({ error: 'Failed to start stream' });
+  }
+});
 
     // Start stream endpoint
     app.post('/api/stream/:cameraId/start', async (req, res) => {

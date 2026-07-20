@@ -33,7 +33,7 @@ export default function VideoStreamFullscreen({
     <div className="w-full h-full bg-black">
       <img
         className="w-full h-full object-cover"
-        src={`/api/stream/${camera.id}/mjpeg`}
+      src={`/api/stream/${camera.id}/mjpeg`}
         alt="Camera Feed"
         onLoad={() => setStreamLoading(false)}
         onError={() => setStreamLoading(false)}

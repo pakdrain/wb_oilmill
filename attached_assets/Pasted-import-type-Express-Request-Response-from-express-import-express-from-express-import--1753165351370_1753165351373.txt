@@ -152,16 +152,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Try multiple camera APIs for better ANPR detection
       const cameraApis = [
         // Primary ANPR API
-        "http://admin:admin123@10.10.10.146/cgi-bin/magicBox.cgi?action=getANPRSnapshot",
+        "http://admin:Abc@12345@192.168.6.108/cgi-bin/magicBox.cgi?action=getANPRSnapshot",
         // Alternative ANPR APIs
-        "http://admin:admin123@10.10.10.146/cgi-bin/anpr.cgi?action=getPlateNumber",
-        "http://admin:admin123@10.10.10.146/cgi-bin/snapManager.cgi?action=getANPRPlate",
+        "http://admin:Abc@12345@192.168.6.108/cgi-bin/anpr.cgi?action=getPlateNumber",
+        "http://admin:Abc@12345@192.168.6.108/cgi-bin/snapManager.cgi?action=getANPRPlate",
         // Snapshot with ANPR processing
-        "http://admin:admin123@10.10.10.146/cgi-bin/snapshot.cgi?channel=1&ANPR=true",
+        "http://admin:Abc@12345@192.168.6.108/cgi-bin/snapshot.cgi?channel=1&ANPR=true",
         // Traffic detection API
-        "http://admin:admin123@10.10.10.146/cgi-bin/trafficDetector.cgi?action=getCurrentPlate",
+        "http://admin:Abc@12345@192.168.6.108/cgi-bin/trafficDetector.cgi?action=getCurrentPlate",
         // Original snap manager as fallback
-        "http://admin:admin123@10.10.10.146/cgi-bin/snapManager.cgi?action=attachFileProc&Flags[0]=Event&Events=TrafficManualSnap&heartbeat=5",
+        "http://admin:Abc@12345@192.168.6.108/cgi-bin/snapManager.cgi?action=attachFileProc&Flags[0]=Event&Events=TrafficManualSnap&heartbeat=5",
       ];
 
       let plateNumber = null;
@@ -186,7 +186,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               Connection: "keep-alive",
               "Cache-Control": "no-cache",
               Authorization:
-                "Basic " + Buffer.from("admin:admin123").toString("base64"),
+                "Basic " + Buffer.from("admin:Abc@12345").toString("base64"),
             },
           });
 
@@ -972,7 +972,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/weight/status", (req, res) => {
     res.json({
       connected: isPortConnected,
-      port: "COM6", // Direct assignment to ensure COM6 is returned
+      port: "COM4", // Direct assignment to ensure COM4 is returned
       baudRate: currentBaudRate,
       currentWeight,
       currentUnit,
@@ -1242,7 +1242,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Image capture endpoints
   app.post("/api/capture/first-weight", async (req: Request, res: Response) => {
     try {
-      const { slipNo, cameraIp = "10.10.10.146", cameraPort = 554 } = req.body;
+      const { slipNo, cameraIp = "192.168.6.108", cameraPort = 554 } = req.body;
 
       if (!slipNo) {
         return res.status(400).json({ error: "Slip number is required" });
@@ -1253,7 +1253,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         cameraIp,
         cameraPort,
         username: "admin",
-        password: "admin123",
+        password: "Abc@12345",
       });
 
       res.json({
@@ -2184,7 +2184,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (result.rows.length === 0) {
         return res.json({
           id: 1,
-          port: "COM1",
+          port: "COM4",
           baudRate: 9600,
           dataBits: 8,
           stopBits: 1,

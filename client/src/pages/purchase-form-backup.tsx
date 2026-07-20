@@ -1,1 +1,0 @@
-// Backup of working purchase form before fixing syntax errors

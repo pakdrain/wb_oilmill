@@ -511,7 +511,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/weight/status', (req, res) => {
     res.json({
       connected: isPortConnected,
-      port: 'COM6', // Direct assignment to ensure COM6 is returned
+      port: 'COM4', // Direct assignment to ensure COM4 is returned
       baudRate: currentBaudRate,
       currentWeight,
       currentUnit
@@ -770,7 +770,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Image capture endpoints
   app.post('/api/capture/first-weight', async (req: Request, res: Response) => {
     try {
-      const { slipNo, cameraIp = '10.10.10.146', cameraPort = 554 } = req.body;
+      const { slipNo, cameraIp = '192.168.6.108', cameraPort = 554 } = req.body;
 
       if (!slipNo) {
         return res.status(400).json({ error: 'Slip number is required' });
@@ -781,7 +781,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         cameraIp,
         cameraPort,
         username: 'admin',
-        password: 'admin123'
+        password: 'Abc@12345'
       });
 
       res.json({ 
@@ -1534,7 +1534,7 @@ app.get('/api/sales', async (req: Request, res: Response) => {
       if (result.rows.length === 0) {
         return res.json({
           id: 1,
-          port: 'COM1',
+          port: 'COM4',
           baudRate: 9600,
           dataBits: 8,
           stopBits: 1,

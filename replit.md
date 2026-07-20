@@ -67,7 +67,7 @@ This is a comprehensive weighbridge monitoring system that combines CCTV camera 
 5. Stream statistics are collected and stored in database
 
 ### Weight Data Flow
-1. Weight scale connects via serial port (COM6 default)
+1. Weight scale connects via serial port (COM4 default)
 2. Serial data is parsed and validated
 3. Weight values are broadcast via WebSocket to connected clients
 4. First and second weight measurements are captured for net weight calculation
@@ -171,7 +171,7 @@ This is a comprehensive weighbridge monitoring system that combines CCTV camera 
   - Enhanced OCR with multiple PSM modes and character whitelisting for license plates
   - Added realistic test frame generation when camera not accessible (Replit environment)
   - Integrated Python OCR service with Node.js backend via child process execution
-  - Camera Settings tab properly saves and updates camera configuration (IP: 10.10.10.146)
+  - Camera Settings tab properly saves and updates camera configuration (IP: 192.168.6.108)
   - Real OCR processing replaces dummy data with actual computer vision analysis
   - System works with local Windows camera setup and cloud Replit deployment
 - June 14, 2025. Initial setup
@@ -316,7 +316,7 @@ Preferred communication style: Simple, everyday language.
 
 ## Important Notes
 
-- The license plate recognition system is designed to work with the actual camera (IP: 10.10.10.146) when deployed locally
+- The license plate recognition system is designed to work with the actual camera (IP: 192.168.6.108) when deployed locally
 - Camera has built-in ANPR functionality that should be utilized
 - System requires real license plate detection from camera feed, not dummy/mock data
 - The application should capture actual number plates visible in the camera and populate the vehicle number field automatically
