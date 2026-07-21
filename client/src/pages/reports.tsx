@@ -15,7 +15,6 @@ import { useAuth } from "@/lib/auth";
 
 
 
-
 interface PurchaseRecord {
   wb_id: number;
   slip_no: string;
@@ -27,6 +26,9 @@ interface PurchaseRecord {
   branch_id: number;
   online_entry: string;
   offline_entry: string;
+
+  // ✅ ADD THIS - pur_reg_type for PURCHASE
+  pur_reg_type?: string;  // REGISTER or UNREGISTER
 
   igp_no: string;
   freight: string;
@@ -52,16 +54,18 @@ interface SaleRecord {
   slip_no: string;
   slip_in_time: string;
   slip_out_time: string;
-   first_weight: string;
-  second_weight: string,
+  first_weight: string;
+  second_weight: string;
   entry_type: string;
   customer_name: string;
   vehicle_no: string;
   branch_id: number;
-   do_no: string;      // DO number (agar applicable)
+  do_no: string;      // DO number (agar applicable)
   online_entry: boolean;
- offline_entry: boolean | string;
+  offline_entry: boolean | string;
 
+  // ✅ ADD THIS - reg_type for SALE
+  reg_type?: string;  // REGISTER or UNREGISTER
 }
 
 interface Branch {
@@ -3997,14 +4001,17 @@ const fetchDataForIGP = async (wbId: any, entryType: string) => {
       {/* First Weight Image */}
       <td className="px-4 py-2 border border-black text-center">
         <img
-          src={`/captured_images/first_weight/slip_${record.slip_no}_${record.entry_type?.toUpperCase()}.jpg`}
-          alt="First Weight"
-          className="w-16 h-12 object-contain mx-auto cursor-pointer"
-          onClick={() =>
-            window.open(`/captured_images/first_weight/slip_${record.slip_no}.jpg`, "_blank")
-          }
-          onError={(e) => ((e.target as HTMLImageElement).style.display = "none")}
-        />
+        src={`/captured_images/first_weight/slip_${record.slip_no}_${record.entry_type?.toUpperCase()}_${record.pur_reg_type || record.reg_type || 'REGISTER'}.jpg`}
+        alt="First Weight"
+        className="w-16 h-12 object-contain mx-auto cursor-pointer"
+        onClick={() =>
+          window.open(`/captured_images/first_weight/slip_${record.slip_no}_${record.entry_type?.toUpperCase()}_${record.pur_reg_type || record.reg_type || 'REGISTER'}.jpg`, "_blank")
+        }
+        onError={(e) => {
+          const target = e.target as HTMLImageElement;
+          target.style.display = "none";
+        }}
+      />
       </td>
 
       {/* ✅ Second Weight */}
@@ -4015,14 +4022,17 @@ const fetchDataForIGP = async (wbId: any, entryType: string) => {
       {/* Second Weight Image */}
       <td className="px-4 py-2 border border-black text-center">
         <img
-          src={`/captured_images/second_weight/slip_${record.slip_no}_${record.entry_type?.toUpperCase()}.jpg`}
-          alt="Second Weight"
-          className="w-16 h-12 object-contain mx-auto cursor-pointer"
-          onClick={() =>
-            window.open(`/captured_images/second_weight/slip_${record.slip_no}.jpg`, "_blank")
-          }
-          onError={(e) => ((e.target as HTMLImageElement).style.display = "none")}
-        />
+    src={`/captured_images/second_weight/slip_${record.slip_no}_${record.entry_type?.toUpperCase()}_${record.pur_reg_type || record.reg_type || 'REGISTER'}.jpg`}
+    alt="Second Weight"
+    className="w-16 h-12 object-contain mx-auto cursor-pointer"
+    onClick={() =>
+      window.open(`/captured_images/second_weight/slip_${record.slip_no}_${record.entry_type?.toUpperCase()}_${record.pur_reg_type || record.reg_type || 'REGISTER'}.jpg`, "_blank")
+    }
+    onError={(e) => {
+      const target = e.target as HTMLImageElement;
+      target.style.display = "none";
+    }}
+  />
       </td>
 
 <td className="px-4 py-2 border border-black">
@@ -4579,15 +4589,19 @@ const fetchDataForIGP = async (wbId: any, entryType: string) => {
 
         {/* First Weight Image */}
         <td className="px-4 py-2 border border-black text-center">
-          <img
-            src={`/captured_images/first_weight/slip_${record.slip_no}_${record.entry_type?.toUpperCase()}.jpg`}
-            alt="First Weight"
-            className="w-16 h-12 object-cover mx-auto cursor-pointer"
-            onClick={() =>
-              window.open(`/captured_images/first_weight/slip_${record.slip_no}.jpg`, "_blank")
-            }
-            onError={(e) => ((e.target as HTMLImageElement).style.display = "none")}
-          />
+         {/* ✅ First Weight Image - with reg_type support */}
+<img
+  src={`/captured_images/first_weight/slip_${record.slip_no}_${record.entry_type?.toUpperCase()}_${record.pur_reg_type || record.reg_type || 'REGISTER'}.jpg`}
+  alt="First Weight"
+  className="w-16 h-12 object-cover mx-auto cursor-pointer"
+  onClick={() =>
+    window.open(`/captured_images/first_weight/slip_${record.slip_no}_${record.entry_type?.toUpperCase()}_${record.pur_reg_type || record.reg_type || 'REGISTER'}.jpg`, "_blank")
+  }
+  onError={(e) => {
+    const target = e.target as HTMLImageElement;
+    target.style.display = "none";
+  }}
+/>
         </td>
 
         {/* ✅ Second Weight Value */}
@@ -4597,15 +4611,20 @@ const fetchDataForIGP = async (wbId: any, entryType: string) => {
 
         {/* Second Weight Image */}
         <td className="px-4 py-2 border border-black text-center">
-          <img
-            src={`/captured_images/second_weight/slip_${record.slip_no}_${record.entry_type?.toUpperCase()}.jpg`}
-            alt="Second Weight"
-            className="w-16 h-12 object-cover mx-auto cursor-pointer"
-            onClick={() =>
-              window.open(`/captured_images/second_weight/slip_${record.slip_no}.jpg`, "_blank")
-            }
-            onError={(e) => ((e.target as HTMLImageElement).style.display = "none")}
-          />
+         {/* ✅ Second Weight Image - with reg_type support */}
+{/* ✅ Second Weight Image - with reg_type support */}
+<img
+  src={`/captured_images/second_weight/slip_${record.slip_no}_${record.entry_type?.toUpperCase()}_${record.pur_reg_type || record.reg_type || 'REGISTER'}.jpg`}
+  alt="Second Weight"
+  className="w-16 h-12 object-cover mx-auto cursor-pointer"
+  onClick={() =>
+    window.open(`/captured_images/second_weight/slip_${record.slip_no}_${record.entry_type?.toUpperCase()}_${record.pur_reg_type || record.reg_type || 'REGISTER'}.jpg`, "_blank")
+  }
+  onError={(e) => {
+    const target = e.target as HTMLImageElement;
+    target.style.display = "none";
+  }}
+/>
         </td>
 
  <td className="px-4 py-2 border border-black">
