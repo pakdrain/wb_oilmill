@@ -41,7 +41,7 @@ const [cameFromPrevious, setCameFromPrevious] = useState(false);
  const queryClient = useQueryClient();  // ✅ FIX HERE
 const [disableSaveButton, setDisableSaveButton] = useState(false);
 
-
+const [openCalendar, setOpenCalendar] = useState<number | null>(null);
 
 
   // Sales data state - mapped to database columns
@@ -4455,50 +4455,56 @@ className="border-r border-gray-400 p-1 text-center text-blue-600 truncate w-ful
                         />
                       </div>
 
-                      <div className="bg-white border border-gray-300 p-1">
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <button className="w-full h-6 text-xs text-left px-1 border-none bg-transparent focus:outline-none flex items-center justify-between text-black">
-                              <span className="text-black">
-                                {details[index]?.doDate
-                                  ? format(
-                                      new Date(details[index].doDate),
-                                      "dd.MM.yyyy"
-                                    )
-                                  : ""}{" "}
-                                {/* Empty if no date */}
-                              </span>
-                              {/* Only show calendar icon if date exists */}
-                              {details[index]?.doDate && (
-                                <CalendarIcon className="h-3 w-3 text-black" />
-                              )}
-                            </button>
-                          </PopoverTrigger>
-                          <PopoverContent
-                            className="w-auto p-0 bg-white border border-black"
-                            align="start"
-                          >
-                            <Calendar
-                              mode="single"
-                              selected={
-                                details[index]?.doDate
-                                  ? new Date(details[index].doDate)
-                                  : undefined
-                              }
-                              onSelect={(date) => {
-                                if (date) {
-                                  handledetailsChange(
-                                    index,
-                                    "doDate",
-                                    format(date, "yyyy-MM-dd")
-                                  );
-                                }
-                              }}
-                              initialFocus
-                            />
-                          </PopoverContent>
-                        </Popover>
-                      </div>
+                     <div className="bg-white border border-gray-300 p-1">
+  <Popover
+    open={openCalendar === index}
+    onOpenChange={(open) => setOpenCalendar(open ? index : null)}
+  >
+    <PopoverTrigger asChild>
+      <button className="w-full h-6 text-xs text-left px-1 border-none bg-transparent focus:outline-none flex items-center justify-between text-black">
+        <span className="text-black">
+          {details[index]?.doDate
+            ? format(
+                new Date(details[index].doDate),
+                "dd.MM.yyyy"
+              )
+            : ""}
+        </span>
+
+        {details[index]?.doDate && (
+          <CalendarIcon className="h-3 w-3 text-black" />
+        )}
+      </button>
+    </PopoverTrigger>
+
+    <PopoverContent
+      className="w-auto p-0 bg-white border border-black"
+      align="start"
+    >
+      <Calendar
+        mode="single"
+        selected={
+          details[index]?.doDate
+            ? new Date(details[index].doDate)
+            : undefined
+        }
+        onSelect={(date) => {
+          if (date) {
+            handledetailsChange(
+              index,
+              "doDate",
+              format(date, "yyyy-MM-dd")
+            );
+
+            // ✅ Close calendar after selecting date
+            setOpenCalendar(null);
+          }
+        }}
+        initialFocus
+      />
+    </PopoverContent>
+  </Popover>
+</div>
 
 <div className="bg-white border border-gray-300 p-1 relative">
   {/* Trigger field */}
