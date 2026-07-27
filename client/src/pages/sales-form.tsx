@@ -1147,10 +1147,10 @@ const loadDataByWbId = async (wbId: number) => {
       console.log("🔍 Values from DB:", {
         reg_type: master.reg_type,
         bardana_bag: master.bardana_bag,
-        master_bardana_weight: master.bardana_weight, // ✅ Added
+        master_bardana_weight: master.bardana_weight,
         bardana_type: details.bardana_type,
         weight_per_bags: details.weight_per_bags,
-        details_bardana_weight: details.bardana_weight, // ✅ Added
+        details_bardana_weight: details.bardana_weight,
         no_of_bags: details.no_of_bags,
         con: details.con,
       });
@@ -1170,6 +1170,11 @@ const loadDataByWbId = async (wbId: number) => {
         excBags: excBagsValue,
         con: conValue,
       });
+
+      console.log("🔍 DEBUG - details object:", details);
+      console.log("🔍 DEBUG - bardana_type:", details.bardana_type);
+      console.log("🔍 DEBUG - weight_per_bags:", details.weight_per_bags);
+      console.log("🔍 DEBUG - full data:", data);
 
       // Load all the form data including detail table data
       setFormData((prev) => ({
@@ -1201,8 +1206,8 @@ const loadDataByWbId = async (wbId: number) => {
         second_weight_by: master.second_weight_by || "",
 
         // ⭐ MASTER TABLE FIELDS
-        regType: regTypeValue,           // ✅ Sale module - reg_type
-        excBags: excBagsValue,           // ✅ Exc.Bags - bardana_bag
+        regType: regTypeValue,
+        excBags: excBagsValue,
 
         // ⭐ DETAILS TABLE FIELDS
         bardanaType: details.bardana_type || "",
@@ -1212,7 +1217,7 @@ const loadDataByWbId = async (wbId: number) => {
         bardanaWeight: details.bardana_weight ? String(details.bardana_weight) : "",
         
         noOfBags: details.no_of_bags ? String(details.no_of_bags) : "",
-        igpCheckbox: conValue,           // ✅ IGP Checkbox - con column
+        igpCheckbox: conValue,
 
         status: master.status || "",
         vendor: details.vendor_name || "",
@@ -1245,12 +1250,11 @@ const loadDataByWbId = async (wbId: number) => {
         console.log("📝 After setting formData:", {
           regType: formData.reg_type,
           excBags: formData.excBags,
-          masterBardanaWeight: formData.masterBardanaWeight, // ✅ Added
+          masterBardanaWeight: formData.masterBardanaWeight,
           bardanaType: formData.bardanaType,
           wtPerBag: formData.wtPerBag,
           bardanaWeight: formData.bardanaWeight,
           noOfBags: formData.noOfBags,
-         // igpCheckbox: formData.igpCheckbox,
         });
       }, 100);
 
@@ -1317,10 +1321,29 @@ const loadDataByWbId = async (wbId: number) => {
             customerId: detail.customer_id || "",
             itemId: detail.item_id || "",
             itemCode: detail.item_code || "",
+            // ✅ FIX: Add bardana fields to each row
+            bardanaType: detail.bardana_type || details.bardana_type || "",
+            wtPerBag: detail.weight_per_bags 
+              ? String(detail.weight_per_bags) 
+              : details.weight_per_bags 
+                ? String(details.weight_per_bags) 
+                : "",
+            bardanaWeight: detail.bardana_weight 
+              ? String(detail.bardana_weight) 
+              : details.bardana_weight 
+                ? String(details.bardana_weight) 
+                : "",
+            noOfBags: detail.no_of_bags 
+              ? String(detail.no_of_bags) 
+              : details.no_of_bags 
+                ? String(details.no_of_bags) 
+                : "",
+            bardanaTypeId: detail.bardana_type_id || details.bardana_type_id || null,
+            freight: detail.freight_child || detail.freight || "",
           };
         });
 
-        // Ensure 8 rows
+        // Ensure 8 rows - also add bardana fields to empty rows
         while (salesRows.length < 8) {
           salesRows.push({
             doId: "",
@@ -1337,11 +1360,17 @@ const loadDataByWbId = async (wbId: number) => {
             customerId: "",
             itemId: "",
             itemCode: "",
+            bardanaType: "",
+            wtPerBag: "",
+            bardanaWeight: "",
+            noOfBags: "",
+            bardanaTypeId: null,
+            freight: "",
           });
         }
 
         setSalesData(salesRows);
-        console.log("✅ Sales data loaded in edit mode:", salesRows);
+        console.log("✅ Sales data loaded in edit mode with bardana fields:", salesRows);
 
         // 🔹 Update details state for customer LOV
         const detailsRows = salesRows.map((row: any) => ({
@@ -1352,7 +1381,7 @@ const loadDataByWbId = async (wbId: number) => {
         console.log("✅ Details for customer LOV updated:", detailsRows);
 
       } else {
-        // No detail data found, reset to empty table
+        // No detail data found, reset to empty table with bardana fields
         setSalesData(
           Array.from({ length: 8 }, (_, index) => ({
             doId: "",
@@ -1369,13 +1398,19 @@ const loadDataByWbId = async (wbId: number) => {
             customerId: "",
             itemId: "",
             itemCode: "",
+            bardanaType: "",
+            wtPerBag: "",
+            bardanaWeight: "",
+            noOfBags: "",
+            bardanaTypeId: null,
+            freight: "",
           }))
         );
         console.log("No sales detail data found, using empty table");
       }
     }
   } catch (error) {
-    console.error("Error loading data by wb_id:", error);
+    console.error("Error loading data by wbId:", error);
     alert("Failed to load record data");
   }
 };
