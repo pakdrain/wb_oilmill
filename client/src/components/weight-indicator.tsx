@@ -20,7 +20,7 @@ export default function WeightIndicator({
   const { comPort: globalComPort } = useComPort();
 
   // ✅ Final COM port (priority: prop > context > fallback)
-  const effectiveComPort = comPort || globalComPort || "COM4";
+  const effectiveComPort = comPort || globalComPort || "COM1";
 
   useEffect(() => {
     let interval: NodeJS.Timeout;

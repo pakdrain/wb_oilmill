@@ -112,7 +112,7 @@ const [itemsResponse, setItemsResponse] = useState<any>(null);
 
 
   const fetchAndSaveVendorData = async () => {
-  const staticUrl = "http://portal.sabirsgroup.com:8184/ords/sabroso_ords/wb/VENDORS";
+  const staticUrl = "http://portal.sabirsgroup.com:8184/ords/sabroso_ords/wb-om/VENDORS";
   
   setVendorLoading(true);
   setVendorMessage("");
@@ -145,9 +145,9 @@ const [itemsResponse, setItemsResponse] = useState<any>(null);
 };
 
   const fetchAndSaveSysConfigData = async () => {
-  //const staticSysConfigUrl = "http://portal.sabirsgroup.com:8184/ords/sabroso_ords/wb/segment_id";
+  //const staticSysConfigUrl = "http://portal.sabirsgroup.com:8184/ords/sabroso_ords/wb-om/segment_id";
   
-const staticSysConfigUrl = "http://portal.sabirsgroup.com:8184/ords/sabroso_ords/webridge_igp/segment_id";
+const staticSysConfigUrl = "http://portal.sabirsgroup.com:8184/ords/sabroso_ords/wb-om/segment_id";
 
 
 
@@ -182,7 +182,7 @@ const staticSysConfigUrl = "http://portal.sabirsgroup.com:8184/ords/sabroso_ords
 };
 
   const fetchAndSaveChartAccountsData = async () => {
-  const staticChartAccountsUrl = "http://portal.sabirsgroup.com:8184/ords/sabroso_ords/wb/CHART_OF_ACCOUNT_SHAHZOR";
+  const staticChartAccountsUrl = "http://portal.sabirsgroup.com:8184/ords/sabroso_ords/wb-om/CHART_OF_ACCOUNT_SHAHZOR";
   
   setChartAccountsLoading(true);
   setChartAccountsMessage("");
@@ -218,10 +218,10 @@ const staticSysConfigUrl = "http://portal.sabirsgroup.com:8184/ords/sabroso_ords
 
 
 // Items API URL (aapko confirm karna hoga)
-const ITEMS_API_URL = "http://portal.sabirsgroup.com:8184/ords/sabroso_ords/wb/MULTAN_FEED_INV_ITEMS"; // Example URL, aap apni actual URL daalein
+const ITEMS_API_URL = "http://portal.sabirsgroup.com:8184/ords/sabroso_ords/wb-om/MULTAN_FEED_INV_ITEMS"; // Example URL, aap apni actual URL daalein
 
 // Customers API URL (Vendors wali same API use kar rahe hain)
-const CUSTOMERS_API_URL = "http://portal.sabirsgroup.com:8184/ords/sabroso_ords/wb/CUSTOMERS"; // Same as vendors URL
+const CUSTOMERS_API_URL = "http://portal.sabirsgroup.com:8184/ords/sabroso_ords/wb-om/CUSTOMERS"; // Same as vendors URL
 
 // Fetch and Save Customers Function
 const fetchAndSaveCustomersData = async () => {

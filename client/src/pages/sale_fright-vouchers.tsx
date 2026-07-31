@@ -514,7 +514,7 @@ const handleOnline = async () => {
        3️⃣ Send to IGP
        ======================= */
     const igpResp = await fetch(
-      "http://portal.sabirsgroup.com:8184/ords/sabroso_ords/webridge_igp/manual-vouchers",
+      "http://portal.sabirsgroup.com:8184/ords/sabroso_ords/wb-om/manual-vouchers",
       {
         method: "POST",
         headers: {

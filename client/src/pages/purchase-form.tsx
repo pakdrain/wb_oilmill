@@ -622,7 +622,7 @@ const loadDataByWbId = useCallback(
         console.log("🎯 FINAL conBoolean:", conBoolean);
 
         // ✅ DIRECT ASSIGNMENT - No normalization needed
-        const purchaseValue = master.pur_reg_type || 'REGISTER';
+        const purchaseValue = master.pur_reg_type || 'R';
         console.log(`📌 Setting purchase to: "${purchaseValue}"`);
 
         setFormData((prev) => ({
@@ -1060,22 +1060,6 @@ const generateReportHTML = (reportData: any) => {
     return month >= 7 ? year + 1 : year;
   }
 
-  const formatFreightWithCommas = (value: any) => {
-    if (!value) return "";
-    const stringValue = value.toString();
-    const cleanValue = stringValue.replace(/[^\d.]/g, "");
-    const parts = cleanValue.split(".");
-    let integerPart = parts[0];
-    const decimalPart = parts[1];
-    if (integerPart.length > 3) {
-      const rightPart = integerPart.slice(-3);
-      let leftPart = integerPart.slice(0, -3);
-      const leftPartFormatted = leftPart.replace(/\B(?=(\d{2})+(?!\d))/g, ",");
-      integerPart = leftPartFormatted + "," + rightPart;
-    }
-    return decimalPart !== undefined ? integerPart + "." + decimalPart : integerPart;
-  };
-
   const calculateAvgWeight = () => {
     const netWeight = parseFloat(reportData.netWeight || "0");
     const quantity = parseInt(reportData.noOfBags || "0");
@@ -1115,7 +1099,7 @@ const generateReportHTML = (reportData: any) => {
   const fiscalYear = getFiscalYear(reportData.slipInTime || reportData.createdAt);
 
   // ✅ Get purRegType from reportData (database column: pur_reg_type)
-  const purRegType = reportData.pur_reg_type || reportData.purRegType || reportData.purchase || 'REGISTER';
+  const purRegType = reportData.pur_reg_type || reportData.purRegType || reportData.purchase || 'R';
 
   console.log(
     "First Image API:",
@@ -1299,7 +1283,7 @@ const generateReportHTML = (reportData: any) => {
         <div class="copy-label">Head Office Copy</div>
         <div class="print-date">Print Date: ${currentDate} ${currentTime}</div>
       </div>
-      <div class="company-name">MULTAN FEEDS (PVT)LTD</div>
+      <div class="company-name">Sabirs Vegetable Oils (Pvt.) Ltd.</div>
       <div style="height: 6px;"></div>
       <div class="slip-title">WEIGHBRIDGE SLIP</div>
       <div><b>IGP #</b> &nbsp;&nbsp;&nbsp;<span class="value" style="font-weight: bold; font-size: 20px;">${reportData.igpNo || ""}</span></div>
@@ -1308,7 +1292,6 @@ const generateReportHTML = (reportData: any) => {
           <div class="fields">
             <div><span class="label">W.B #</span><span class="value1">${reportData.slipNo || ""}</span></div>
             <div><span class="label1">Truck #</span><span class="value1">${reportData.vehicleNo || ""}</span></div>
-            <div><span class="label">Freight Payment</span><span class="value">${formatFreightWithCommas(reportData.freight || "")}</span></div>
           </div>
         </div>
         <div class="right-section">
@@ -1389,7 +1372,7 @@ const generateReportHTML = (reportData: any) => {
         <div class="slip-header">
           <div class="header-left">Feed Mill Copy</div>
           <div class="header-center">
-            <div class="company-name">MULTAN FEEDS (PVT)LTD</div>
+            <div class="company-name">Sabirs Vegetable Oils (Pvt.) Ltd.</div>
             <div style="height: 6px;"></div>
             <div class="slip-title">WEIGHBRIDGE SLIP</div>
           </div>
@@ -1401,7 +1384,6 @@ const generateReportHTML = (reportData: any) => {
             <div class="fields">
               <div><span class="label">W.B #</span><span class="value1">${reportData.slipNo || ""}</span></div>
               <div><span class="label1">Truck #</span><span class="value1">${reportData.vehicleNo || ""}</span></div>
-              <div><span class="label">Freight Payment</span><span class="value">${formatFreightWithCommas(reportData.freight || "")}</span></div>
             </div>
           </div>
           <div class="right-section">
@@ -1482,7 +1464,7 @@ const generateReportHTML = (reportData: any) => {
           <div class="slip-header">
             <div class="header-left">Customer Copy</div>
             <div class="header-center">
-              <div class="company-name">MULTAN FEEDS (PVT)LTD</div>
+              <div class="company-name">Sabirs Vegetable Oils (Pvt.) Ltd.</div>
               <div style="height: 6px;"></div>
               <div class="slip-title">WEIGHBRIDGE SLIP</div>
             </div>
@@ -1505,7 +1487,6 @@ const generateReportHTML = (reportData: any) => {
                   <div><span class="label1">Party:</span><span class="value1">${reportData.vendor || reportData.customerName || ""}</span></div>
                   <div><span class="label1">COMMODITY</span><span class="value1">${reportData.itemDesc || ""}</span></div>
                   <div><span class="label1">Truck #</span><span class="value1">${reportData.vehicleNo || ""}</span></div>
-                  <div><span class="label">Freight Payment</span><span class="value">${formatFreightWithCommas(reportData.freight || "")}</span></div>
                 </div>
               </div>
               <div class="section-box">
@@ -1513,7 +1494,7 @@ const generateReportHTML = (reportData: any) => {
                   <div><span class="label">QUANTITY</span><span class="value">${reportData.noOfBags || ""}</span></div>
                   <div>
                     <span class="label">NET WEIGHT</span>
-                    <span class="value" style="font-weight: bold;">${calculateCustomerNetWeight()}</span>
+                    <div class="flex-1 border-b border-black">_________________________</div>
                   </div>
                 </div>
               </div>
@@ -1572,7 +1553,7 @@ const navigateToPrev = async () => {
   let recordFound = false;
 
   // ✅ Get current purchase type (REGISTER/UNREGISTER/NULL)
-  const currentPurchaseType = formData.purchase || 'REGISTER';
+  const currentPurchaseType = formData.purchase || 'R';
 
   try {
     while (prevSlip > 0 && !recordFound) {
@@ -1611,7 +1592,7 @@ const navigateToNext = async () => {
   let recordFound = false;
 
   // ✅ Get current purchase type (REGISTER/UNREGISTER/NULL)
-  const currentPurchaseType = formData.purchase || 'REGISTER';
+  const currentPurchaseType = formData.purchase || 'R';
 
   try {
     while (!recordFound) {
@@ -1751,7 +1732,7 @@ const initialFormData = {
     isSecondWeightSaved: false,
     grossWBD: "Null",
     registerType: "Null",
-    purchase: 'REGISTER',
+    purchase: 'R',
     sale: "Null",
     excBags: false,  
     igpCheckbox: false,
@@ -1861,9 +1842,14 @@ const fetchIgpData = async () => {
     try {
         console.log(`🔍 Fetching IGP data from external API: ${igpNoClean}`);
         
-        const response = await fetch(
-            `http://portal.sabirsgroup.com:8184/ords/sabroso_ords/wb/live_data?igp_no=${igpNoClean}`
-        );
+      const apiUrl = formData.igpCheckbox
+  ? `http://portal.sabirsgroup.com:8184/ords/sabroso_ords/wb-om/igp-contract?igp_no=${igpNoClean}`
+  : `http://portal.sabirsgroup.com:8184/ords/sabroso_ords/wb-om/live_data?igp_no=${igpNoClean}`;
+
+console.log("🌐 Using API:", apiUrl);
+console.log("☑️ IGP Checkbox:", formData.igpCheckbox);
+
+const response = await fetch(apiUrl);
         
         if (!response.ok)
             throw new Error(`HTTP error! status: ${response.status}`);
@@ -1908,7 +1894,7 @@ const fetchIgpData = async () => {
                 vendorId: firstItem.vendor_id ? String(firstItem.vendor_id) : "",
                 vehicleNo: firstItem.vehicle_no || "",
                 bardanaType: firstItem.bardanatype || firstItem.bardana_type || "",
-                wtPerBag: firstItem.wtperbag ? String(firstItem.wtperbag) : "",
+                wtPerBag: firstItem.wtperbag ,
                 igpId: firstItem.igp_id ? String(firstItem.igp_id) : "",
                 itemCode: firstItem.item_code || "",
                 itemDesc: firstItem.item_desc || "",
@@ -1963,7 +1949,7 @@ const fetchIgpData = async () => {
   //   }
   //   try {
   //     const response = await fetch(
-  //       `http://portal.sabirsgroup.com:8184/ords/sabroso_ords/wb/dc_data?dc_no=${dcNo}`
+  //       `http://portal.sabirsgroup.com:8184/ords/sabroso_ords/wb-om/dc_data?dc_no=${dcNo}`
   //     );
 
   //     if (!response.ok) {
@@ -2899,13 +2885,13 @@ useEffect(() => {
     } else {
         const purchaseValue = formData.purchase?.trim()?.toUpperCase() || '';
         
-        if (purchaseValue === 'REGISTER') {
+        if (purchaseValue === 'R') {
             entryType = 'PURCHASE';
-            purRegType = 'REGISTER';
+            purRegType = 'R';
             console.log('✅ Purchase REGISTER');
-        } else if (purchaseValue === 'UNREGISTER') {
+        } else if (purchaseValue === 'U') {
             entryType = 'PURCHASE';
-            purRegType = 'UNREGISTER';
+            purRegType = 'U';
             console.log('✅ Purchase UNREGISTER');
         } else {
             entryType = 'PURCHASE';
@@ -2953,9 +2939,9 @@ useEffect(() => {
                 setTimeout(() => fetchSlipNumber(retryCount + 1), (retryCount + 1) * 1000);
             } else {
                 let fallback;
-                if (purRegType === 'REGISTER') {
+                if (purRegType === 'R') {
                     fallback = `PR${(Math.floor(Math.random() * 9000) + 1000)}`;
-                } else if (purRegType === 'UNREGISTER') {
+                } else if (purRegType === 'U') {
                     fallback = `PU${(Math.floor(Math.random() * 9000) + 1000)}`;
                 } else {
                     fallback = (Math.floor(Math.random() * 9000) + 1000).toString();
@@ -3039,7 +3025,7 @@ const captureFirstWeight = async () => {
           cameraIp: "10.10.10.146",
           cameraPort: 554,
           entryType: formData.entryType || "PURCHASE",
-          purRegType: formData.purchase || "REGISTER", // ✅ purchase se value
+          purRegType: formData.purchase || "R", // ✅ purchase se value
         };
         
         console.log("🔍 Sending capture request:", payload);
@@ -3053,22 +3039,22 @@ const captureFirstWeight = async () => {
         if (captureResponse.ok) {
           const captureData = await captureResponse.json();
           console.log("✅ Image captured:", captureData);
-          alert(`✅ Image captured for slip: ${formData.slipNo} (${formData.purchase || 'REGISTER'})`);
+          alert(`✅ Image captured for slip: ${formData.slipNo} (${formData.purchase || 'R'})`);
         } else {
           const errorData = await captureResponse.json();
           console.error("❌ Backend Error:", errorData);
-          alert(`❌ Failed to capture image: ${errorData.message}`);
+         // alert(`❌ Failed to capture image: ${errorData.message}`);
         }
       } catch (imageError) {
         console.error("❌ Error capturing image:", imageError);
-        alert("❌ Error capturing image");
+        // alert("❌ Error capturing image");
       }
     } else {
       console.warn("⚠️ No slip number provided, skipping image capture");
     }
   } catch (error) {
     console.error("❌ Error fetching weight data:", error);
-    alert("Failed to capture first weight reading");
+    // alert("Failed to capture first weight reading");
   }
 };
 
@@ -3101,7 +3087,7 @@ const captureSecondWeight = async () => {
           cameraIp: "10.10.10.146",
           cameraPort: 554,
           entryType: formData.entryType || "PURCHASE",
-          purRegType: formData.purchase || "REGISTER", // ✅ purchase se value
+          purRegType: formData.purchase || "R", // ✅ purchase se value
         };
         
         console.log("🔍 Sending capture request:", payload);
@@ -3115,22 +3101,22 @@ const captureSecondWeight = async () => {
         if (captureResponse.ok) {
           const captureData = await captureResponse.json();
           console.log("✅ Second weight image captured:", captureData);
-          alert(`✅ Second weight image captured for slip: ${formData.slipNo} (${formData.purchase || 'REGISTER'})`);
+          alert(`✅ Second weight image captured for slip: ${formData.slipNo} (${formData.purchase || 'R'})`);
         } else {
           const errorData = await captureResponse.json();
           console.error("❌ Backend Error:", errorData);
-          alert(`❌ Failed to capture image: ${errorData.message}`);
+          //alert(`❌ Failed to capture image: ${errorData.message}`);
         }
       } catch (imageError) {
         console.error("❌ Error capturing second weight image:", imageError);
-        alert("❌ Error capturing image");
+       // alert("❌ Error capturing image");
       }
     } else {
       console.warn("⚠️ No slip number provided, skipping image capture");
     }
   } catch (error) {
     console.error("❌ Error fetching weight data:", error);
-    alert("Failed to capture second weight reading");
+    // alert("Failed to capture second weight reading");
   }
 };
 
@@ -3145,7 +3131,7 @@ const calculateWeights = () => {
   const grossWeight = parseFloat(formData.grossWeight) || 0;
 
   // ✅ Base net weight (Second Weight - First Weight)
-  let baseNetWeight = secondWeight - firstWeight;
+  let baseNetWeight =firstWeight -secondWeight  ;
   
   // ✅ If excBags is checked, subtract bardana weight from net weight
   let netWeightRounded;
@@ -3691,8 +3677,8 @@ if (isEditMode && editingWbId) {
       slip_date: getPKTDateTime(),
       
       // ✅ NEW FIELDS ADDED
-      pur_reg_type: formData.purchase === "REGISTER" ? "REGISTER" : 
-                    formData.purchase === "UNREGISTER" ? "UNREGISTER" : "Null",
+      pur_reg_type: formData.purchase === "R" ? "R" : 
+                    formData.purchase === "U" ? "U" : "Null",
       gross_wbd: (parseFloat(formData.grossWeight) || 0) + (parseFloat(formData.bardanaWeight) || 0),
       supplier_weight: formData.supplierWeight ? parseFloat(formData.supplierWeight) : null,
       quality_deduction: formData.qualityDeduction ? parseFloat(formData.qualityDeduction) : null,
@@ -3993,7 +3979,7 @@ if (isEditMode && onlineMode) {
 
       // 🔹 Step 2: Call IGP API
       const igpResp = await fetch(
-        "http://portal.sabirsgroup.com:8184/ords/sabroso_ords/wb/wb-update-on-igp",
+        "http://portal.sabirsgroup.com:8184/ords/sabroso_ords/wb-om/wb-update-on-igp",
         {
           method: "POST",
           headers: {
@@ -4371,7 +4357,7 @@ if (!isEditMode && onlineMode === true) {
 
       // ✅ Prepare IGP API endpoint
       const IGP_API_URL =
-        "http://portal.sabirsgroup.com:8184/ords/sabroso_ords/wb/wb-update-on-igp";
+        "http://portal.sabirsgroup.com:8184/ords/sabroso_ords/wb-om/wb-update-on-igp";
 
       // 🧾 Detailed payload preview before sending
       console.log("🌐 Sending PURCHASE IGP payload to API:", IGP_API_URL);
@@ -4788,24 +4774,6 @@ const generateAndPrintReport = (apiData: any) => {
     return month >= 7 ? year + 1 : year;
   }
 
-  const formatFreightWithCommas = (value: any) => {
-    if (!value) return "";
-    const stringValue = value.toString();
-    const cleanValue = stringValue.replace(/[^\d.]/g, "");
-    const parts = cleanValue.split(".");
-    let integerPart = parts[0];
-    const decimalPart = parts[1];
-
-    if (integerPart.length > 3) {
-      const rightPart = integerPart.slice(-3);
-      let leftPart = integerPart.slice(0, -3);
-      const leftPartFormatted = leftPart.replace(/\B(?=(\d{2})+(?!\d))/g, ",");
-      integerPart = leftPartFormatted + "," + rightPart;
-    }
-
-    return decimalPart !== undefined ? integerPart + "." + decimalPart : integerPart;
-  };
-
   const calculateAvgWeight = () => {
     const netWeight = parseFloat(apiData.net_weight || apiData.netWeight || "0");
     const quantity = parseInt(apiData.no_of_bags || apiData.noOfBags || "0");
@@ -4829,7 +4797,6 @@ const generateAndPrintReport = (apiData: any) => {
   const slipNo = apiData.slip_no || apiData.slipNo || formData.slipNo;
   const igpNo = apiData.igp_no || apiData.igpNo || formData.igpNo;
   const vehicleNo = apiData.vehicle_no || apiData.vehicleNo || formData.vehicleNo;
-  const freight = apiData.freight || formData.freight;
   const party = apiData.vendor_name || apiData.vendor || formData.vendor || formData.customerName;
   const slipInTime = apiData.slip_in_time || masterData.slip_in_time;
   const slipOutTime = apiData.slip_out_time || masterData.slip_out_time;
@@ -4848,7 +4815,7 @@ const generateAndPrintReport = (apiData: any) => {
   const entryType = apiData.entry_type || apiData.entryType || formData.entryType || "purchase";
 
   // ✅ Get purRegType from apiData or formData
-  const purRegType = apiData.pur_reg_type || apiData.purRegType || formData.purchase || 'REGISTER';
+  const purRegType = apiData.pur_reg_type || apiData.purRegType || formData.purchase || 'R';
   
   // ✅ Get Fiscal Year
   const fiscalYear = getFiscalYear(slipInTime || apiData.created_at);
@@ -5028,7 +4995,7 @@ const generateAndPrintReport = (apiData: any) => {
         <div class="copy-label">Head Office Copy</div>
         <div class="print-date">Print Date: ${currentDate} ${currentTime}</div>
       </div>
-      <div class="company-name">MULTAN FEEDS (PVT)LTD</div>
+      <div class="company-name">Sabirs Vegetable Oils (Pvt.) Ltd.</div>
       <div style="height: 10px;"></div>
       <div class="slip-title">WEIGHBRIDGE SLIP</div>
 
@@ -5039,7 +5006,6 @@ const generateAndPrintReport = (apiData: any) => {
           <div class="fields">
             <div><span class="label">W.B #</span><span class="value1">${slipNo}</span></div>
             <div><span class="label1">Truck #</span><span class="value1">${vehicleNo}</span></div>
-            <div><span class="label">Freight Payment</span><span class="value">${formatFreightWithCommas(freight)}</span></div>
           </div>
         </div>
         <div class="right-section">
@@ -5126,7 +5092,7 @@ const generateAndPrintReport = (apiData: any) => {
         <div class="slip-header">
           <div class="header-left">Feed Mill Copy</div>
           <div class="header-center">
-            <div class="company-name">MULTAN FEEDS (PVT)LTD</div>
+            <div class="company-name">Sabirs Vegetable Oils (Pvt.) Ltd.</div>
             <div style="height: 10px;"></div>
             <div class="slip-title">WEIGHBRIDGE SLIP</div>
           </div>
@@ -5139,7 +5105,6 @@ const generateAndPrintReport = (apiData: any) => {
             <div class="fields">
               <div><span class="label">W.B #</span><span class="value1">${slipNo}</span></div>
               <div><span class="label1">Truck #</span><span class="value1">${vehicleNo}</span></div>
-              <div><span class="label">Freight Payment</span><span class="value">${formatFreightWithCommas(freight)}</span></div>
             </div>
           </div>
           <div class="right-section">
@@ -5218,7 +5183,7 @@ const generateAndPrintReport = (apiData: any) => {
           <div class="slip-header">
             <div class="header-left">Customer Copy</div>
             <div class="header-center">
-              <div class="company-name">MULTAN FEEDS (PVT)LTD</div>
+              <div class="company-name">Sabirs Vegetable Oils (Pvt.) Ltd.</div>
               <div style="height: 10px;"></div>
               <div class="slip-title">WEIGHBRIDGE SLIP</div>
             </div>
@@ -5243,7 +5208,6 @@ const generateAndPrintReport = (apiData: any) => {
                   <div><span class="label1">Party:</span><span class="value1">${party}</span></div>
                   <div><span class="label1">COMMODITY</span><span class="value1">${itemDesc}</span></div>
                   <div><span class="label1">Truck #</span><span class="value1">${vehicleNo}</span></div>
-                  <div><span class="label">Freight Payment</span><span class="value">${formatFreightWithCommas(freight)}</span></div>
                 </div>
               </div>
               <div class="section-box">
@@ -5251,17 +5215,7 @@ const generateAndPrintReport = (apiData: any) => {
                   <div><span class="label">QUANTITY</span><span class="value">${noOfBags}</span></div>
                   <div class="flex items-center gap-1">
                     <span class="label text-xs text-black w-20">NET WEIGHT</span>
-                    <div class="flex-1 border-b border-black">
-                      <span class="value" style="font-weight: bold;">
-                        ${(() => {
-                          const withBardanaweight = Math.trunc((parseFloat(grossWeight) || 0) + (parseFloat(bardanaWeight) || 0));
-                          const supplierWt = parseFloat(supplierWeight) || withBardanaweight;
-                          const qualityDeductionnet = parseFloat(qualityDeduction) || 0;
-                          const minWeight = Math.max(0, Math.min(supplierWt, withBardanaweight) - qualityDeductionnet);
-                          return minWeight.toLocaleString("en-IN") + " KG";
-                        })()}
-                      </span>
-                    </div>
+                     <div class="flex-1 border-b border-black">_________________________</div>
                   </div>
                 </div>
               </div>
@@ -6064,7 +6018,7 @@ className="border-r border-gray-400 p-1 text-center text-blue-600 truncate w-ful
                     }
 
                     const response = await fetch(
-                      "http://portal.sabirsgroup.com:8184/ords/sabroso_ords/wb/wb-update-on-igp",
+                      "http://portal.sabirsgroup.com:8184/ords/sabroso_ords/wb-om/wb-update-on-igp",
                       {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
@@ -6189,6 +6143,7 @@ className="border-r border-gray-400 p-1 text-center text-blue-600 truncate w-ful
           name="firstWeight"
           value={formData.firstWeight}
           onChange={handleChange}
+          readOnly
           className={`h-7 text-xs flex-1 max-w-32 text-black 
             !border !border-gray-400 rounded px-1 
             focus:!border-black
@@ -6204,6 +6159,7 @@ className="border-r border-gray-400 p-1 text-center text-blue-600 truncate w-ful
           name="secondWeight"
           value={formData.secondWeight}
           onChange={handleChange}
+          readOnly
           className={`h-7 text-xs flex-1 max-w-32 text-black 
             !border !border-gray-400 rounded px-1 
             focus:!border-black
@@ -6276,8 +6232,8 @@ className="border-r border-gray-400 p-1 text-center text-blue-600 truncate w-ful
       formData.purchase !== undefined && formData.purchase !== null
     }
   >
-    <option value="Register">Register</option>
-    <option value="Unregister">Unregister</option>
+    <option value="R">Register</option>
+    <option value="U">Unregister</option>
    
   </select>
 </div>
@@ -6287,7 +6243,7 @@ className="border-r border-gray-400 p-1 text-center text-blue-600 truncate w-ful
   <Label className="text-xs text-black w-20">Purchase</Label>
   <select
     name="purchase"
-    value={formData.purchase || 'REGISTER'}
+    value={formData.purchase || 'R'}
     onChange={(e) => {
       const value = e.target.value;
       console.log(`🔄 Purchase changed to: "${value}"`);
@@ -6303,8 +6259,8 @@ className="border-r border-gray-400 p-1 text-center text-blue-600 truncate w-ful
       !border !border-gray-400 rounded px-1 
       focus:!border-black bg-white"
   >
-    <option value="REGISTER">REGISTER</option>
-    <option value="UNREGISTER">UNREGISTER</option>
+    <option value="R">REGISTER</option>
+   {/* // <option value="U">UNREGISTER</option> */}
    
   </select>
   
@@ -6457,16 +6413,23 @@ className="border-r border-gray-400 p-1 text-center text-blue-600 truncate w-ful
             1st WHT
           </Button>
 
-          <Button
-            className={`h-7 text-xs ${
-              (!isEditMode && !formData.isFirstWeightSaved) || formData.isSecondWeightSaved
-                ? "bg-gray-400 cursor-not-allowed"
-                : "bg-green-600 hover:bg-green-700"
-            }`}
-            onClick={captureSecondWeight}
-          >
-            2nd WHT
-          </Button>
+        <Button
+    className={`h-7 text-xs ${
+        formData.isSecondWeightSaved || 
+        (isEditMode && formData.secondWeight && parseFloat(formData.secondWeight) > 0) ||
+        (!isEditMode && !formData.isFirstWeightSaved)
+            ? "bg-gray-400 cursor-not-allowed"
+            : "bg-green-600 hover:bg-green-700"
+    }`}
+    onClick={captureSecondWeight}
+    disabled={
+        formData.isSecondWeightSaved || 
+        (isEditMode && formData.secondWeight && parseFloat(formData.secondWeight) > 0) ||
+        (!isEditMode && !formData.isFirstWeightSaved)
+    }
+>
+    2nd WHT
+</Button>
         </div>
 
         {/* Camera Feed */}

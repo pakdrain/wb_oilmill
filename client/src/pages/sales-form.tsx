@@ -107,7 +107,20 @@ const [details, setdetails] = useState<
   }))
 );
 
+   // ✅ Helper function to check if reg_type is NULL
+    const isRegTypeNull = () => {
+        const regType = formData.reg_type || formData.regType || '';
+        return !regType || 
+               regType === 'N' || 
+               regType === 'Null' || 
+               regType === 'NULL' || 
+               regType === '';
+    };
 
+   
+
+
+    
 // Sale form mein yeh debug add karein
 // Sale form mein yeh useEffect add karein
 useEffect(() => {
@@ -171,19 +184,23 @@ const filteredBardanaTypes = useMemo(() => {
   // Sales data state - mapped to database columns
 const [salesData, setSalesData] = useState<any[]>(
   Array.from({ length: 8 }, () => ({
-    doId: "",             // do_id
-    dcNo: "",             // manual_dc_no
-    doNo: "",             // do_no
-    customerId: "",       // ✅ add this field (maps to customer_id)
-    customerName: "",     // customer_name
-    vehicleNo: "",        // vehicle_no
-    doDate: "",           // do_date
-    itemDescription: "",  // item_desc
-    dcQty: "",            // dc_qty
-    doQty: "",            // do_qty
+    doId: "",
+    dcNo: "",
+    doNo: "",
+    customerId: "",
+    customerName: "",
+    vehicleNo: "",
+    doDate: "",
+    itemDescription: "",
+    dcQty: "",
+    doQty: "",
     branch: "",
-        freight: "",// ✅ Add this
+    freight: "",
 
+    bardanaType: "",
+    bardanaTypeId: "",
+    wtPerBag: "",
+    bardanaWeight: "",
   }))
 );
 
@@ -199,6 +216,10 @@ const nonEmptyRows = salesData.filter(
     row.dcQty ||
     row.doQty
 );
+
+
+
+ 
 
 // ------------------------------------------------------------------
 // ✅ FETCH REPORT DATA
@@ -224,7 +245,7 @@ const fetchReportData = async (wbId: number) => {
 
       // ✅ SALE -> reg_type, PURCHASE -> pur_reg_type
       const isSale = raw.entry_type === "SALE" || raw.entry_type === "SALE_RETURN";
-      const regType = isSale ? (raw.reg_type ?? "REGISTER") : (raw.pur_reg_type ?? "REGISTER");
+      const regType = isSale ? (raw.reg_type ?? "R") : (raw.pur_reg_type ?? "R");
 
       console.log("✅ Selected RegType:", regType);
       console.log("✅ Entry Type:", raw.entry_type);
@@ -323,7 +344,7 @@ const getFiscalYear = (dateStr: string | null): number => {
 const buildImageUrl = (type: 'first' | 'second', apiData: any) => {
   const slipNo = apiData?.slipNo || apiData?.slip_no || '';
   const entryType = apiData?.entryType || apiData?.entry_type || 'SALE';
-  const regType = apiData?.regType || 'REGISTER';
+  const regType = apiData?.regType || 'R';
   const fiscalYear = getFiscalYear(apiData?.slipInTime || apiData?.slip_in_time || null);
 
   const baseUrl = type === 'first'
@@ -339,6 +360,7 @@ const buildImageUrl = (type: 'first' | 'second', apiData: any) => {
   console.log(`✅ ${type} IMAGE URL (HTML ENCODED):`, url);
   return url;
 };
+
 
 // ✅ HANDLE PRINT REPORT
 const handlePrintReport = async () => {
@@ -365,7 +387,9 @@ const handlePrintReport = async () => {
     slipNo: apiData.slipNo,
     firstWeight: apiData.firstWeight,
     secondWeight: apiData.secondWeight,
-    netWeight: apiData.netWeight
+    netWeight: apiData.netWeight,
+    gross_w_b_d: apiData.gross_w_b_d,
+    details: apiData.details,
   });
 
   const hasFirstWeight = apiData.firstWeight && parseFloat(apiData.firstWeight) > 0;
@@ -395,46 +419,76 @@ const handlePrintReport = async () => {
       itemDescription: row.item_desc || "",
       dcQty: row.dc_qty ? String(row.dc_qty) : "",
       doQty: row.do_qty ? String(row.do_qty) : "",
+      itemId: row.item_id || null,  // ✅ Added item_id
     }));
 
   const vehicleNo = apiData.vehicleNo || apiData.vehicle_no || "";
 
+  // ✅ Check if any detail row has specific item_id
+  const specificItemIds = [6517, 5877, 4307];
+  
+  // ✅ Check if ANY row in details has these item_ids
+  const hasSpecificItem = (apiData.details || []).some((row: any) => {
+    const itemId = parseInt(row.item_id);
+    return specificItemIds.includes(itemId);
+  });
+
+  console.log("🔍 Has Specific Item (6517, 5877, 4307):", hasSpecificItem);
+
+  let netWeightForReport = "";
+
+  if (hasSpecificItem) {
+    // ✅ If specific item exists, use grossWeight (not netWeight)
+    netWeightForReport = apiData.grossWeight || "";
+    console.log("📊 Specific item found - Using grossWeight for Net Weight:", netWeightForReport);
+  } else {
+    // ✅ If no specific item, use netWeight
+     netWeightForReport = apiData.gross_w_b_d ? String(apiData.gross_w_b_d) : "";
+    console.log("📊 No specific item - Using netWeight for Net Weight:", netWeightForReport);
+  }
+
+  // ✅ Update apiData with the correct netWeight for report
+  const updatedApiData = {
+    ...apiData,
+    netWeight: netWeightForReport,
+  };
+
+  console.log("✅ Updated apiData for report:", {
+    hasSpecificItem,
+    original_netWeight: apiData.netWeight,
+    original_grossWeight: apiData.grossWeight,
+    final_netWeight: netWeightForReport,
+  });
+
+  // ✅ CONDITION: If both weights exist -> generateReportHTML (Full Weighbridge Slip)
   if (hasFirstWeight && hasSecondWeight) {
-    const oldReportHTML = generateReportHTML(
+    const reportHTML = generateReportHTML(
       "second",
       apiData.slipInTime || "",
       apiData.slipOutTime || "",
       vehicleNo,
-      apiData,
+      updatedApiData,
       dbRows
     );
-    const newReportHTML = generateNewReportHTML(
+    preparePrintWindow(reportHTML, "Weighbridge Report");
+  } 
+  // ✅ CONDITION: If only first weight exists -> generateNewReportHTML (Feeds Dispatch Order)
+  else if (hasFirstWeight) {
+    const reportHTML = generateNewReportHTML(
       apiData.slipInTime || "",
       apiData.slipOutTime || "",
       vehicleNo,
-      apiData,
+      updatedApiData,
       dbRows
     );
-    preparePrintWindow(oldReportHTML, "Weighbridge Report");
-    preparePrintWindow(newReportHTML, "Feeds Dispatch Order");
-
-  } else if (hasFirstWeight) {
-    const oldReportHTML = generateReportHTML(
-      "first",
-      apiData.slipInTime || "",
-      null,
-      vehicleNo,
-      apiData,
-      dbRows
-    );
-    preparePrintWindow(oldReportHTML, "Weight Report");
-
-  } else {
+    preparePrintWindow(reportHTML, "Feeds Dispatch Order");
+  } 
+  // ✅ No weight data
+  else {
     alert("No weight data available to print.");
   }
 };
 
-// ✅ GENERATE REPORT HTML - FIXED with &amp; in URLs
 const generateReportHTML = (
   weightType: "first" | "second",
   slipInTime: string,
@@ -462,21 +516,6 @@ const generateReportHTML = (
     return `${day}-${month}-${year} ${time}`;
   }
 
-  const formatFreightWithCommas = (value: string | number) => {
-    if (!value) return "";
-    const stringValue = value.toString();
-    const cleanValue = stringValue.replace(/[^\d.]/g, "");
-    const parts = cleanValue.split(".");
-    let integerPart = parts[0];
-    const decimalPart = parts[1];
-    if (integerPart.length > 3) {
-      const rightPart = integerPart.slice(-3);
-      const leftPartFormatted = integerPart.slice(0, -3).replace(/\B(?=(\d{2})+(?!\d))/g, ",");
-      integerPart = leftPartFormatted + "," + rightPart;
-    }
-    return decimalPart !== undefined ? integerPart + "." + decimalPart : integerPart;
-  };
-
   // ✅ Use mapped fields
   const weightByName = apiData?.created_by_name || "";
   const hasSecondWeight = apiData?.secondWeight && parseFloat(apiData.secondWeight) > 0;
@@ -486,27 +525,22 @@ const generateReportHTML = (
   const secondWeight = apiData?.secondWeight || "";
   const netWeight = apiData?.netWeight || "";
 
-  // ✅ FIXED: Build URLs with &amp; for HTML encoding
+  // ✅ Build URLs with &amp; for HTML encoding
   const entryTypeUpper = (apiData?.entryType || apiData?.entry_type || 'SALE').toUpperCase();
   const fiscalYear = getFiscalYear(apiData?.slipInTime || apiData?.slip_in_time || null);
-  const regType = apiData?.regType || 'REGISTER';
+  const regType = apiData?.regType || 'R';
   const slipNo = apiData?.slipNo || apiData?.slip_no || '';
 
   const isPurchase = entryTypeUpper === 'PURCHASE' || entryTypeUpper === 'PURCHASE_RETURN';
   const paramName = isPurchase ? 'purRegType' : 'reg_type';
 
-  // ✅ CRITICAL FIX: Use &amp; instead of & for HTML rendering
   const firstImg = `/api/images/first-weight/latest-file?slipNo=${encodeURIComponent(slipNo)}&amp;entryType=${encodeURIComponent(entryTypeUpper)}&amp;fiscalYear=${encodeURIComponent(String(fiscalYear))}&amp;${paramName}=${encodeURIComponent(regType)}`;
   const secondImg = `/api/images/second-weight/latest-file?slipNo=${encodeURIComponent(slipNo)}&amp;entryType=${encodeURIComponent(entryTypeUpper)}&amp;fiscalYear=${encodeURIComponent(String(fiscalYear))}&amp;${paramName}=${encodeURIComponent(regType)}`;
 
-  console.log("✅ FIRST IMAGE URL (HTML ENCODED):", firstImg);
-  console.log("✅ SECOND IMAGE URL (HTML ENCODED):", secondImg);
-
   const displaySlipInTime = slipInTime ? formatPKTDateTime(slipInTime) : "";
   const displaySlipOutTime = slipOutTime ? formatPKTDateTime(slipOutTime) : "";
-  const grandTotal = dbRows.reduce((acc, row) => acc + (parseFloat(row.dcQty) || 0), 0);
 
-  // ✅ Customer copy — DC wise grouping
+  // ✅ Customer copy — DC wise grouping (only DC, Party, Qty)
   const groupedByDC: { [key: string]: any[] } = {};
   dbRows.forEach(row => {
     const dcNo = row.dcNo || 'No DC';
@@ -518,19 +552,16 @@ const generateReportHTML = (
   Object.keys(groupedByDC).forEach(dcNo => {
     const rows = groupedByDC[dcNo];
     customerCopyTablesHTML += `
-      <div style="margin-bottom: 20px; page-break-inside: avoid;">
+      <div style="margin-bottom: 10px; page-break-inside: avoid;">
         <table class="table">
           <thead>
-            <tr><th>DC #</th><th>DO #</th><th>Party Name</th><th>Feed #</th><th>Feed Name</th><th>Qty</th></tr>
+            <tr><th>DC #</th><th>Party Name</th><th>Qty</th></tr>
           </thead>
           <tbody>
             ${rows.map(row => `
               <tr>
                 <td>${row.dcNo || ""}</td>
-                <td>${row.doNo || ""}</td>
                 <td>${row.customerName || ""}</td>
-                <td>${row.itemCode || ""}</td>
-                <td>${row.itemDescription || ""}</td>
                 <td>${row.dcQty || ""}</td>
               </tr>
             `).join("")}
@@ -540,19 +571,20 @@ const generateReportHTML = (
     `;
   });
 
+  // ✅ Office Copy Table
   const officeCopyTableHTML = `
     <table class="table">
       <thead>
-        <tr><th>DC #</th><th>DO #</th><th>Party Name</th><th>Feed #</th><th>Feed Name</th><th>Qty</th></tr>
+        <tr><th>DC #</th><th>Party Name</th><th>Commodity</th><th>Bag Condition</th><th>Bag Type</th><th>Qty</th></tr>
       </thead>
       <tbody>
         ${dbRows.map(row => `
           <tr>
             <td>${row.dcNo || ""}</td>
-            <td>${row.doNo || ""}</td>
             <td>${row.customerName || ""}</td>
-            <td>${row.itemCode || ""}</td>
-            <td>${row.itemDescription || ""}</td>
+            <td>${row.itemDescription || row.itemCode || ""}</td>
+            <td>${apiData?.wtPerBag || ""}</td>
+            <td>${apiData?.bardanaType || ""}</td>
             <td>${row.dcQty || ""}</td>
           </tr>
         `).join("")}
@@ -589,6 +621,149 @@ const generateReportHTML = (
     </div>
   `;
 
+  // ✅ Generate Office/Mill Copy
+  const generateOfficeCopyHTML = (copyType: 'Office' | 'Mill', tablesHTML: string) => {
+    return `
+      <div class="print-date">Print Date: ${currentDate} ${currentTime}</div>
+      <div class="title">Sabirs Vegetable Oils (Pvt.) Ltd.</div>
+      <div class="title">SALE SLIP</div>
+      <div class="copy-label">${copyType} Copy</div>
+      <div style="display: flex; justify-content: space-between; border: 1px solid black; border-left: 1px solid black; height: 120px;">
+        <table class="info-table" style="width: 33.33%; border-right: 1px solid black;">
+          <tr>
+            <td class="label-cell">Slip No:</td>
+            <td class="value-cell"><span class="slip-no-value">${apiData?.slipNo || ""}</span></td>
+            <td class="image-cell" rowspan="3" style="width: 40%;">
+              <div class="image-box-tall" style="height: 120px;">
+                <img src="${firstImg}" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" />
+                <div style="display: none; font-size: 8px; color: #666;">No Img</div>
+              </div>
+            </td>
+          </tr>
+          <tr><td class="label-cell">Time In:</td><td class="value-cell">${displaySlipInTime}</td></tr>
+          <tr><td class="label-cell">Time Out:</td><td class="value-cell">${displaySlipOutTime}</td></tr>
+        </table>
+        <div class="center-wrapper" style="width: 18%; display: flex; align-items: center; justify-content: center; border-right: 1px solid black; height: 100%;">
+          <div class="center-box" style="height: 60%; width: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; border: none; padding: 2px 4px;">
+            <div class="truck-label" style="font-size: 12px; font-weight: 900; border-bottom: 1px solid black; width: 100%; text-align: center; padding-bottom: 2px; margin-bottom: 2px;">Truck #</div>
+            <span class="vehicle-no" style="font-size: 12px; font-weight: 900; text-align: center; width: 100%;">${vehicleNo || apiData?.vehicleNo || ""}</span>
+          </div>
+        </div>
+        <table class="info-table" style="width: 42%; border-right: 1px solid black;">
+          <tr>
+            <td class="label-cell">Gross Weight:</td>
+            <td class="value-cell weight-value">${secondWeight ? parseFloat(secondWeight).toLocaleString("en-IN") : ""}</td>
+            <td class="image-cell" rowspan="3" style="width: 35%;">
+              <div class="image-box-tall" style="height: 120px;">
+                <img src="${secondImg}" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" />
+                <div style="display: none; font-size: 8px; color: #666;">No Img</div>
+              </div>
+            </td>
+          </tr>
+          <tr><td class="label-cell">Tare Weight:</td><td class="value-cell weight-value">${firstWeight ? parseFloat(firstWeight).toLocaleString("en-IN") : ""}</td></tr>
+          <tr><td class="label-cell">Net Weight:</td><td class="value-cell weight-value">${netWeight ? parseFloat(netWeight).toLocaleString("en-IN") : ""}</td></tr>
+        </table>
+      </div>
+      
+      <!-- ✅ Space between top box and DC table -->
+      <div style="height: 10px;"></div>
+      
+      ${tablesHTML}
+      
+      <div class="totals">
+        <div>Remarks: ${apiData?.remarks || ""}</div>
+      </div>
+      
+      ${signaturesHTML}
+    `;
+  };
+
+  // ✅ Generate Customer Copy
+  const generateCustomerCopyHTML = () => {
+    return `
+      <div class="print-date">Print Date: ${currentDate} ${currentTime}</div>
+      <div class="title">Sabirs Vegetable Oils (Pvt.) Ltd.</div>
+      <div class="title">SALE SLIP</div>
+      <div class="copy-label">Customer Copy</div>
+      <div style="display: flex; justify-content: space-between; border: 1px solid black; border-left: 1px solid black; height: 90px;">
+        <table class="info-table" style="width: 33.33%; border-right: 1px solid black;">
+          <tr>
+            <td class="label-cell">Slip No:</td>
+            <td class="value-cell"><span class="slip-no-value">${apiData?.slipNo || ""}</span></td>
+          </tr>
+          <tr><td class="label-cell">Time In:</td><td class="value-cell">${displaySlipInTime}</td></tr>
+          <tr><td class="label-cell">Time Out:</td><td class="value-cell">${displaySlipOutTime}</td></tr>
+        </table>
+        <div class="center-wrapper" style="width: 33.33%; display: flex; align-items: center; justify-content: center; border-right: 1px solid black; height: 100%;">
+          <div class="center-box" style="height: 100%; width: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; border: none; padding: 4px 6px;">
+            <div class="truck-label" style="font-size: 12px; font-weight: 900; border-bottom: 1px solid black; width: 100%; text-align: center; padding-bottom: 3px; margin-bottom: 3px;">Truck #</div>
+            <span class="vehicle-no" style="font-size: 14px; font-weight: 900; text-align: center; width: 100%;">${vehicleNo || apiData?.vehicleNo || ""}</span>
+          </div>
+        </div>
+        <table class="info-table" style="width: 33.33%; border-right: 1px solid black;">
+          <tr>
+            <td class="label-cell">Net Weight:</td>
+            <td class="value-cell">
+              <div style="border-bottom: 2px solid black; width: 100%; height: 30px;">&nbsp;</div>
+            </td>
+          </tr>
+        </table>
+      </div>
+      
+      <!-- ✅ Space between top box and DC table -->
+      <div style="height: 10px;"></div>
+      
+      ${customerCopyTablesHTML}
+      
+      <!-- ✅ Seals Vertical -->
+      <div style="display: flex; justify-content: space-around; margin-top: 10px; border: 1px solid black; padding: 6px;">
+        <div style="text-align: center; font-weight: bold; font-size: 10px;">
+          <div>Seal 1</div>
+          <div style="border-bottom: 1px solid black; width: 50px; margin: 2px auto; height: 12px;"></div>
+        </div>
+        <div style="text-align: center; font-weight: bold; font-size: 10px;">
+          <div>Seal 2</div>
+          <div style="border-bottom: 1px solid black; width: 50px; margin: 2px auto; height: 12px;"></div>
+        </div>
+        <div style="text-align: center; font-weight: bold; font-size: 10px;">
+          <div>Seal 3</div>
+          <div style="border-bottom: 1px solid black; width: 50px; margin: 2px auto; height: 12px;"></div>
+        </div>
+        <div style="text-align: center; font-weight: bold; font-size: 10px;">
+          <div>Seal 4</div>
+          <div style="border-bottom: 1px solid black; width: 50px; margin: 2px auto; height: 12px;"></div>
+        </div>
+        <div style="text-align: center; font-weight: bold; font-size: 10px;">
+          <div>Seal 5</div>
+          <div style="border-bottom: 1px solid black; width: 50px; margin: 2px auto; height: 12px;"></div>
+        </div>
+        <div style="text-align: center; font-weight: bold; font-size: 10px;">
+          <div>Seal 6</div>
+          <div style="border-bottom: 1px solid black; width: 50px; margin: 2px auto; height: 12px;"></div>
+        </div>
+        <div style="text-align: center; font-weight: bold; font-size: 10px;">
+          <div>Seal 7</div>
+          <div style="border-bottom: 1px solid black; width: 50px; margin: 2px auto; height: 12px;"></div>
+        </div>
+        <div style="text-align: center; font-weight: bold; font-size: 10px;">
+          <div>Seal 8</div>
+          <div style="border-bottom: 1px solid black; width: 50px; margin: 2px auto; height: 12px;"></div>
+        </div>
+      </div>
+      
+      <!-- ✅ Urdu Note -->
+      <div style="text-align: right; direction: rtl; margin-top: 6px; font-size: 12px; font-weight: bold; padding: 0 10px;">
+        <span style="font-weight: bold;">نوٹ:</span> گاڑی کا <span style="font-weight: bold;">سیل نمبر</span> اچھی طرح چیک کرنے کے بعد ہی گاڑی اَن لوڈ کریں۔
+      </div>
+      
+      ${signaturesHTML}
+    `;
+  };
+
+  const officeCopyHTML = generateOfficeCopyHTML('Office', officeCopyTableHTML);
+  const millCopyHTML = generateOfficeCopyHTML('Mill', officeCopyTableHTML);
+  const customerCopyHTML = generateCustomerCopyHTML();
+
   return `
 <!DOCTYPE html>
 <html lang="en">
@@ -596,117 +771,72 @@ const generateReportHTML = (
   <meta charset="UTF-8" />
   <title>Weighbridge Slip</title>
   <style>
-    body { font-family:'Times New Roman', Times, serif; font-size: 20px; margin: 20px; }
-    .container { border: 1px solid black; padding: 20px; height: auto; min-height: 1122px; box-sizing: border-box; }
-    .title { text-align: center; font-weight: bold; margin-bottom: 6px; font-size: 22px; }
-    .copy-label { text-align: left; font-weight: bold; margin-bottom: 4px; font-size: 16px; }
-    .info-table { border-collapse: collapse; width: 100%; }
-    .info-table td { border-bottom: 1px solid black; padding: 0px 0px; line-height: 1.0; }
-    .print-date { text-align: right; font-size: 12px; font-weight: bold; }
-    .label-cell { width: 20%; font-weight: bold; font-size: 14px; padding-left: 1px; }
-    .value-cell { width: 40%; font-weight: bold; font-size: 18px; padding-right: 1px; }
-    .slip-no-value { font-weight: 900; font-size: 20px !important; }
-    .image-cell { width: 30%; border-left: 1px solid black; text-align: center; }
-    .image-box-tall { height: 100%; display: flex; justify-content: center; align-items: center; border: 1px solid black; overflow: hidden; }
+    body { font-family:'Times New Roman', Times, serif; font-size: 20px; margin: 8px; padding: 0; }
+    .container { border: 1px solid black; padding: 8px; height: auto; box-sizing: border-box; }
+    
+    /* ✅ Copy spacing - more space between Office and Mill */
+    .copy-section { 
+      margin-bottom: 80px; 
+      page-break-inside: avoid; 
+    }
+    
+    /* ✅ Extra spacing between Office and Mill specifically */
+    .office-mill-spacing {
+      margin-bottom: 100px;
+    }
+    
+    .title { text-align: center; font-weight: 900; margin-bottom: 2px; font-size: 18px; }
+    .copy-label { text-align: left; font-weight: 900; margin-bottom: 2px; font-size: 12px; }
+    .info-table { border-collapse: collapse; width: 100%; height: 100%; }
+    .info-table td { border-bottom: 1px solid black; padding: 0px 0px; line-height: 0.8; }
+    .print-date { text-align: right; font-size: 10px; font-weight: 900; }
+    .label-cell { width: 20%; font-weight: 900; font-size: 11px; padding-left: 1px; }
+    .value-cell { width: 40%; font-weight: 900; font-size: 14px; padding-right: 1px; }
+    .weight-value { font-weight: 900; font-size: 16px; }
+    .slip-no-value { font-weight: 900; font-size: 15px !important; }
+    .image-cell { width: 40%; border-left: 1px solid black; text-align: center; }
+    .image-box-tall { height: 120px; display: flex; justify-content: center; align-items: center; border: 1px solid black; overflow: hidden; }
     .image-box-tall img { max-height: 100%; max-width: 100%; object-fit: contain; }
-    .center-box { border: 1px solid black; text-align: center; font-weight: bold; width: 100%; height: 120px; display: flex; flex-direction: column; justify-content: center; box-sizing: border-box; padding: 8px 10px; }
-    .truck-label { font-weight: normal; font-size: 14px; border-bottom: 1px solid black; margin-bottom: 5px; padding-bottom: 2px; }
-    .table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-    .table th, .table td { border: 1px solid black; padding: 6px; text-align: left; font-size: 18px; font-weight: bold; }
-    .signatures { display: flex; justify-content: space-between; margin-top: 40px; gap: 20px; }
-    .signature-block { flex: 1; font-size: 14px; text-align: center; }
-    .signature-label { display: inline-block; font-size: 14px; font-weight: bold; }
-    .signature-line { display: inline-block; border-bottom: 1px solid black; width: 160px; position: relative; }
-    .signature-name { font-size: 10px; font-weight: bold; color: #444; position: absolute; top: -18px; left: 50%; transform: translateX(-50%); white-space: nowrap; }
-    .signature-container { display: flex; align-items: center; justify-content: center; gap: 3px; }
-    .totals { display: flex; justify-content: space-between; margin-top: 10px; font-weight: bold; font-size: 16px; }
-    .vehicle-no { font-weight: 900; font-size: 20px; }
-    hr.dashed { border: 1px dashed #aaa; margin: 120px 0; }
+    .center-box { border: none; }
+    .truck-label { font-weight: 900; font-size: 12px; border-bottom: 1px solid black; width: 100%; text-align: center; padding-bottom: 2px; margin-bottom: 2px; }
+    .table { width: 100%; border-collapse: collapse; margin-top: 4px; }
+    .table th, .table td { border: 1px solid black; padding: 3px 4px; text-align: left; font-size: 12px; font-weight: 900; }
+    .signatures { display: flex; justify-content: space-between; margin-top: 45px; gap: 8px; }
+    .signature-block { flex: 1; font-size: 10px; text-align: center; }
+    .signature-label { display: inline-block; font-size: 10px; font-weight: 900; }
+    .signature-line { display: inline-block; border-bottom: 1px solid black; width: 80px; position: relative; }
+    .signature-name { font-size: 8px; font-weight: 900; color: #444; position: absolute; top: -12px; left: 50%; transform: translateX(-50%); white-space: nowrap; }
+    .signature-container { display: flex; align-items: center; justify-content: center; gap: 2px; }
+    .totals { display: flex; justify-content: space-between; margin-top: 4px; font-weight: 900; font-size: 12px; }
+    .vehicle-no { font-weight: 900; font-size: 12px; }
+    hr.dashed { border: 1px dashed #aaa; margin: 20px 0; }
   </style>
 </head>
 <body>
 <div class="container">
-  <div class="print-date">Print Date: ${currentDate} ${currentTime}</div>
-  <div class="title">MULTAN FEEDS (PVT) LTD.</div>
-  <div class="copy-label">Office Copy</div>
-  <div style="display: flex; justify-content: space-between; border: 1px solid black; border-left: 1px solid black;">
-    <table class="info-table" style="width: 33.33%; border-right: 1px solid black;">
-      <tr>
-        <td class="label-cell">Slip No:</td>
-        <td class="value-cell"><span class="slip-no-value">${apiData?.slipNo || ""}</span></td>
-        <td class="image-cell" rowspan="3">
-          <div class="image-box-tall">
-            <img src="${firstImg}" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" />
-            <div style="display: none; font-size: 8px; color: #666;">No Img</div>
-          </div>
-        </td>
-      </tr>
-      <tr><td class="label-cell">Time In:</td><td class="value-cell">${displaySlipInTime}</td></tr>
-      <tr><td class="label-cell">Time Out:</td><td class="value-cell">${displaySlipOutTime}</td></tr>
-    </table>
-    <div class="center-wrapper" style="width: 33.33%; display: flex; align-items: center; justify-content: center;">
-      <div class="center-box">
-        <div class="truck-label">Truck #</div>
-       <span class="vehicle-no">${vehicleNo || apiData?.vehicleNo || ""}</span>
-      </div>
-    </div>
-    <table class="info-table" style="width: 33.33%; border-right: 1px solid black;">
-      <tr>
-        <td class="label-cell">Tare Weight:</td>
-        <td class="value-cell">${firstWeight ? parseFloat(firstWeight).toLocaleString("en-IN") : ""}</td>
-        <td class="image-cell" rowspan="3">
-          <div class="image-box-tall">
-            <img src="${secondImg}" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" />
-            <div style="display: none; font-size: 8px; color: #666;">No Img</div>
-          </div>
-        </td>
-      </tr>
-      <tr><td class="label-cell">Loaded Weight:</td><td class="value-cell">${secondWeight ? parseFloat(secondWeight).toLocaleString("en-IN") : ""}</td></tr>
-      <tr><td class="label-cell">Net Weight:</td><td class="value-cell">${netWeight ? parseFloat(netWeight).toLocaleString("en-IN") : ""}</td></tr>
-    </table>
+  <!-- Office Copy -->
+  <div class="copy-section">
+    ${officeCopyHTML}
   </div>
-  ${officeCopyTableHTML}
-  <div class="totals">
-    <div>Freight Payment: ${formatFreightWithCommas(apiData?.freight || "")}</div>
-    <div>Grand Total: ${grandTotal.toLocaleString('en-IN')}</div>
-  </div>
-  ${signaturesHTML}
+  
   <hr class="dashed" />
-  <!-- CUSTOMER COPY -->
-  <div class="print-date">Print Date: ${currentDate} ${currentTime}</div>
-  <div class="title">MULTAN FEEDS (PVT) LTD.</div>
-  <div class="copy-label">Customer Copy</div>
-  <div style="display: flex; justify-content: space-between; border: 1px solid black; border-left: 1px solid black;">
-    <table class="info-table" style="width: 33.33%; border-right: 1px solid black;">
-      <tr>
-        <td class="label-cell">Slip No:</td>
-        <td class="value-cell"><span class="slip-no-value">${apiData?.slipNo || ""}</span></td>
-      </tr>
-      <tr><td class="label-cell">Time In:</td><td class="value-cell">${displaySlipInTime}</td></tr>
-      <tr><td class="label-cell">Time Out:</td><td class="value-cell">${displaySlipOutTime}</td></tr>
-    </table>
-    <div class="center-wrapper" style="width: 33.33%; display: flex; align-items: center; justify-content: center;">
-      <div class="center-box">
-        <div class="truck-label">Truck #</div>
-        <span class="vehicle-no">${vehicleNo || apiData?.vehicleNo || "N/A"}</span>
-      </div>
-    </div>
-    <table class="info-table" style="width: 33.33%; border-right: 1px solid black;">
-      <tr><td class="label-cell">Tare Weight:</td><td class="value-cell">${firstWeight ? parseFloat(firstWeight).toLocaleString("en-IN") : ""}</td></tr>
-      <tr><td class="label-cell">Loaded Weight:</td><td class="value-cell">${secondWeight ? parseFloat(secondWeight).toLocaleString("en-IN") : ""}</td></tr>
-      <tr><td class="label-cell">Net Weight:</td><td class="value-cell">${netWeight ? parseFloat(netWeight).toLocaleString("en-IN") : ""}</td></tr>
-    </table>
+  
+  <!-- Mill Copy -->
+  <div class="copy-section">
+    ${millCopyHTML}
   </div>
-  ${customerCopyTablesHTML}
-  <div class="totals">
-    <div>Freight Payment: ${formatFreightWithCommas(apiData?.freight || "")}</div>
-    <div>Grand Total: ${grandTotal.toLocaleString('en-IN')}</div>
+  
+  <hr class="dashed" />
+  
+  <!-- Customer Copy -->
+  <div class="copy-section">
+    ${customerCopyHTML}
   </div>
-  ${signaturesHTML}
 </div>
 </body>
 </html>`;
 };
+
 
 // ✅ GENERATE NEW REPORT HTML (Feeds Dispatch Order)
 const generateNewReportHTML = (
@@ -751,12 +881,18 @@ const generateNewReportHTML = (
   };
 
   const weightByName = apiData?.created_by_name || "";
-  const hasSecondWeight = apiData?.secondWeight && parseFloat(apiData.secondWeight) > 0;
-  const hasSecondWeightById = !!apiData?.second_weight_by;
-  const secondWeightByName = (hasSecondWeight && hasSecondWeightById) ? (apiData?.second_weight_by_name || "") : "";
   const firstWeight = apiData?.firstWeight || "";
   const secondWeight = apiData?.secondWeight || "";
   const netWeight = apiData?.netWeight || "";
+  const slipNo = apiData?.slipNo || apiData?.slip_no || '';
+
+  // ✅ Build URLs with &amp; for HTML encoding
+  const entryTypeUpper = (apiData?.entryType || apiData?.entry_type || 'PURCHASE').toUpperCase();
+  const fiscalYear = getFiscalYear(apiData?.slipInTime || apiData?.slip_in_time || null);
+  const regType = apiData?.regType || 'R';
+
+  const firstImg = `/api/images/first-weight/latest-file?slipNo=${encodeURIComponent(slipNo)}&amp;entryType=${encodeURIComponent(entryTypeUpper)}&amp;fiscalYear=${encodeURIComponent(String(fiscalYear))}&amp;reg_type=${encodeURIComponent(regType)}`;
+  const secondImg = `/api/images/second-weight/latest-file?slipNo=${encodeURIComponent(slipNo)}&amp;entryType=${encodeURIComponent(entryTypeUpper)}&amp;fiscalYear=${encodeURIComponent(String(fiscalYear))}&amp;reg_type=${encodeURIComponent(regType)}`;
 
   const displaySlipInTime = slipInTime ? formatPKTDateTime(slipInTime) : "";
   const displaySlipOutTime = slipOutTime ? formatPKTDateTime(slipOutTime) : "";
@@ -779,6 +915,48 @@ const generateNewReportHTML = (
     </div>
   `;
 
+  // ✅ Office Copy Table
+  const officeCopyTableHTML = `
+    <table class="table">
+      <thead>
+        <tr><th>DC #</th><th>Party Name</th><th>Commodity</th><th>Bag Condition</th><th>Bag Type</th><th>Qty</th></tr>
+      </thead>
+      <tbody>
+        ${dbRows.map(row => `
+          <tr>
+            <td>${row.dcNo || ""}</td>
+            <td>${row.customerName || ""}</td>
+            <td>${row.itemDescription || row.itemCode || ""}</td>
+            <td>${apiData?.wtPerBag || ""}</td>
+            <td>${apiData?.bardanaType || ""}</td>
+            <td>${row.dcQty || ""}</td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>
+  `;
+
+  // ✅ Customer Copy Table (same as Office Copy Table)
+  const customerCopyTableHTML = `
+    <table class="table">
+      <thead>
+        <tr><th>DC #</th><th>Party Name</th><th>Commodity</th><th>Bag Condition</th><th>Bag Type</th><th>Qty</th></tr>
+      </thead>
+      <tbody>
+        ${dbRows.map(row => `
+          <tr>
+            <td>${row.dcNo || ""}</td>
+            <td>${row.customerName || ""}</td>
+            <td>${row.itemDescription || row.itemCode || ""}</td>
+            <td>${apiData?.wtPerBag || ""}</td>
+            <td>${apiData?.bardanaType || ""}</td>
+            <td>${row.dcQty || ""}</td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>
+  `;
+
   return `
 <!DOCTYPE html>
 <html lang="en">
@@ -786,135 +964,129 @@ const generateNewReportHTML = (
   <meta charset="UTF-8" />
   <title>Feeds Loading Order</title>
   <style>
-    body { font-family:'Times New Roman', Times, serif; font-size: 20px; margin: 20px; }
-    .container { border: 1px solid black; padding: 20px; height: auto; min-height: 1122px; box-sizing: border-box; }
-    .title { text-align: center; font-weight: bold; margin-bottom: 6px; font-size: 22px; }
-    .copy-label { text-align: left; font-weight: bold; margin-bottom: 4px; font-size: 16px; }
+    body { font-family:'Times New Roman', Times, serif; font-size: 20px; margin: 10px; padding: 0; }
+    .container { border: 1px solid black; padding: 20px; height: auto; box-sizing: border-box; }
+    .title { text-align: center; font-weight: bold; margin-bottom: 3px; font-size: 20px; }
+    .copy-label { text-align: left; font-weight: bold; margin-bottom: 2px; font-size: 14px; }
     .info-table { border-collapse: collapse; width: 100%; }
-    .info-table td { border-bottom: 1px solid black; padding: 0px 0px; line-height: 1.0; }
-    .print-date { text-align: right; font-size: 12px; font-weight: bold; }
-    .label-cell { width: 20%; font-weight: bold; font-size: 14px; padding-left: 1px; }
-    .value-cell { width: 40%; font-weight: bold; font-size: 18px; padding-right: 1px; }
-    .slip-no-value { font-weight: 900; font-size: 20px !important; }
-    .center-box { border: 1px solid black; text-align: center; font-weight: bold; width: 100%; height: 120px; display: flex; flex-direction: column; justify-content: center; box-sizing: border-box; padding: 8px 10px; }
-    .truck-label { font-weight: normal; font-size: 14px; border-bottom: 1px solid black; margin-bottom: 5px; padding-bottom: 2px; }
-    .table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-    .table th, .table td { border: 1px solid black; padding: 6px; text-align: left; font-size: 18px; font-weight: bold; }
-    .signatures { display: flex; justify-content: space-between; margin-top: 40px; gap: 20px; }
-    .signature-block { flex: 1; font-size: 14px; text-align: center; }
-    .signature-label { display: inline-block; font-size: 14px; font-weight: bold; }
-    .signature-line { display: inline-block; border-bottom: 1px solid black; width: 160px; position: relative; }
-    .signature-name { font-size: 10px; font-weight: bold; color: #444; position: absolute; top: -18px; left: 50%; transform: translateX(-50%); white-space: nowrap; }
+    .info-table td { border-bottom: 1px solid black; padding: 0px 0px; line-height: 0.9; }
+    .print-date { text-align: right; font-size: 11px; font-weight: bold; }
+    .label-cell { width: 20%; font-weight: bold; font-size: 12px; padding-left: 1px; }
+    .value-cell { width: 40%; font-weight: bold; font-size: 15px; padding-right: 1px; }
+    .slip-no-value { font-weight: 900; font-size: 17px !important; }
+    
+    /* ✅ Image box - BARA */
+    .image-cell { width: 35%; border-left: 1px solid black; text-align: center; }
+    .image-box-tall { height: 130px; display: flex; justify-content: center; align-items: center; border: 1px solid black; overflow: hidden; }
+    .image-box-tall img { max-height: 100%; max-width: 100%; object-fit: contain; }
+    
+    .center-box { border: 1px solid black; text-align: center; font-weight: bold; width: 100%; height: 90px; display: flex; flex-direction: column; justify-content: center; box-sizing: border-box; padding: 6px 8px; }
+    .truck-label { font-weight: normal; font-size: 12px; border-bottom: 1px solid black; margin-bottom: 3px; padding-bottom: 2px; }
+    .table { width: 100%; border-collapse: collapse; margin-top: 6px; margin-bottom: 6px; }
+    .table th, .table td { border: 1px solid black; padding: 4px 5px; text-align: left; font-size: 14px; font-weight: bold; }
+    .signatures { display: flex; justify-content: space-between; margin-top: 15px; gap: 10px; }
+    .signature-block { flex: 1; font-size: 12px; text-align: center; }
+    .signature-label { display: inline-block; font-size: 12px; font-weight: bold; }
+    .signature-line { display: inline-block; border-bottom: 1px solid black; width: 100px; position: relative; }
+    .signature-name { font-size: 9px; font-weight: bold; color: #444; position: absolute; top: -15px; left: 50%; transform: translateX(-50%); white-space: nowrap; }
     .signature-container { display: flex; align-items: center; justify-content: center; gap: 3px; }
-    .totals { display: flex; justify-content: space-between; margin-top: 10px; font-weight: bold; font-size: 16px; }
-    .vehicle-no { font-weight: 900; font-size: 20px; }
-    hr.dashed { border: 1px dashed #aaa; margin: 120px 0; }
+    .totals { display: flex; justify-content: flex-end; margin-top: 6px; font-weight: bold; font-size: 14px; }
+    .vehicle-no { font-weight: 900; font-size: 17px; }
+    
+    /* ✅ More space between Office and Customer copies */
+    hr.dashed { border: 2px dashed #aaa; margin: 150px 0; }
+    .copy-spacing { margin-bottom: 120px; }
   </style>
 </head>
 <body>
 <div class="container">
-  <div class="print-date">Print Date: ${currentDate} ${currentTime}</div>
-  <div class="title">MULTAN FEEDS (PVT) LTD.</div>
-  <div class="title">Feeds Dispatch Order</div>
-  <div class="copy-label">Office Copy</div>
-  <div style="display: flex; justify-content: space-between; border: 1px solid black; border-left: 1px solid black;">
-    <table class="info-table" style="width: 33.33%; border-right: 1px solid black;">
-      <tr>
-        <td class="label-cell">Slip No:</td>
-        <td class="value-cell"><span class="slip-no-value">${apiData?.slipNo || ""}</span></td>
-      </tr>
-      <tr><td class="label-cell">Time In:</td><td class="value-cell">${displaySlipInTime}</td></tr>
-    </table>
-    <div class="center-wrapper" style="width: 33.33%; display: flex; align-items: center; justify-content: center;">
-      <div class="center-box">
-        <div class="truck-label">Truck #</div>
-        <span class="vehicle-no">${vehicleNo || apiData?.vehicleNo || "N/A"}</span>
-      </div>
-    </div>
-    <table class="info-table" style="width: 33.33%; border-right: 1px solid black;">
-      <tr><td class="label-cell">First Weight:</td><td class="value-cell">${firstWeight ? parseFloat(firstWeight).toLocaleString("en-IN") : ""}</td></tr>
-    </table>
-  </div>
-
-  <table class="table">
-    <thead>
-      <tr><th>DC #</th><th>DO #</th><th>Party Name</th><th>Feed #</th><th>Feed Name</th><th>Qty</th></tr>
-    </thead>
-    <tbody>
-      ${dbRows.map(row => `
+  <!-- OFFICE COPY -->
+  <div class="copy-spacing">
+    <div class="print-date">Print Date: ${currentDate} ${currentTime}</div>
+    <div class="title">Sabirs Vegetable Oils (Pvt.) Ltd.</div>
+    <div class="title">ORDER SLIP</div>
+    <div class="copy-label">Office Copy</div>
+    <div style="display: flex; justify-content: space-between; border: 1px solid black; border-left: 1px solid black; height: 130px;">
+      <table class="info-table" style="width: 33.33%; border-right: 1px solid black;">
         <tr>
-          <td>${row.dcNo || ""}</td>
-          <td>${row.doNo || ""}</td>
-          <td>${row.customerName || ""}</td>
-          <td>${row.itemCode || ""}</td>
-          <td>${row.itemDescription || ""}</td>
-          <td>${row.dcQty || ""}</td>
+          <td class="label-cell">Slip No:</td>
+          <td class="value-cell"><span class="slip-no-value">${apiData?.slipNo || ""}</span></td>
+          <td class="image-cell" rowspan="3" style="width: 35%;">
+            <div class="image-box-tall" style="height: 130px;">
+              <img src="${firstImg}" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" />
+              <div style="display: none; font-size: 8px; color: #666;">No Img</div>
+            </div>
+          </td>
         </tr>
-      `).join("")}
-    </tbody>
-  </table>
+        <tr><td class="label-cell">Time In:</td><td class="value-cell">${displaySlipInTime}</td></tr>
+      </table>
+      <div class="center-wrapper" style="width: 28%; display: flex; align-items: center; justify-content: center; border-right: 1px solid black; height: 100%;">
+        <div class="center-box" style="height: 70%; width: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; border: none; padding: 2px 4px;">
+          <div class="truck-label" style="font-size: 12px; font-weight: 900; border-bottom: 1px solid black; width: 100%; text-align: center; padding-bottom: 2px; margin-bottom: 2px;">Truck #</div>
+          <span class="vehicle-no" style="font-size: 14px; font-weight: 900; text-align: center; width: 100%;">${vehicleNo || apiData?.vehicleNo || "N/A"}</span>
+        </div>
+      </div>
+      <table class="info-table" style="width: 37%; border-right: 1px solid black;">
+        <tr>
+          <td class="label-cell">First Weight:</td>
+          <td class="value-cell">${firstWeight ? parseFloat(firstWeight).toLocaleString("en-IN") : ""}</td>
+          <td class="image-cell" rowspan="3" style="width: 35%;">
+            <div class="image-box-tall" style="height: 130px;">
+              <img src="${secondImg}" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" />
+              <div style="display: none; font-size: 8px; color: #666;">No Img</div>
+            </div>
+          </td>
+        </tr>
+      </table>
+    </div>
 
-  <div class="totals">
-    <div>Freight Payment: ${formatFreightWithCommas(apiData?.freight || "")}</div>
-    <div>Grand Total: ${grandTotal.toLocaleString('en-IN')}</div>
+    ${officeCopyTableHTML}
+
+    <div class="totals">
+      <div>Grand Total: ${grandTotal.toLocaleString('en-IN')}</div>
+    </div>
+    ${signaturesHTML}
   </div>
-  ${signaturesHTML}
+  
   <hr class="dashed" />
 
-  <!-- CUSTOMER COPY -->
-  <div class="print-date">Print Date: ${currentDate} ${currentTime}</div>
-  <div class="title">MULTAN FEEDS (PVT) LTD.</div>
-  <div class="title">Feeds Dispatch Order</div>
-  <div class="copy-label">Customer Copy</div>
-  <div style="display: flex; justify-content: space-between; border: 1px solid black; border-left: 1px solid black;">
-    <table class="info-table" style="width: 33.33%; border-right: 1px solid black;">
-      <tr>
-        <td class="label-cell">Slip No:</td>
-        <td class="value-cell"><span class="slip-no-value">${apiData?.slipNo || ""}</span></td>
-      </tr>
-      <tr><td class="label-cell">Time In:</td><td class="value-cell">${displaySlipInTime}</td></tr>
-    </table>
-    <div class="center-wrapper" style="width: 33.33%; display: flex; align-items: center; justify-content: center;">
-      <div class="center-box">
-        <div class="truck-label">Truck #</div>
-        <span class="vehicle-no">${vehicleNo || apiData?.vehicleNo || "N/A"}</span>
-      </div>
-    </div>
-    <table class="info-table" style="width: 33.33%; border-right: 1px solid black;">
-      <tr><td class="label-cell">First Weight:</td><td class="value-cell">${firstWeight ? parseFloat(firstWeight).toLocaleString("en-IN") : ""}</td></tr>
-    </table>
-  </div>
-
-  <table class="table">
-    <thead>
-      <tr><th>DC #</th><th>DO #</th><th>Party Name</th><th>Feed #</th><th>Feed Name</th><th>Qty</th></tr>
-    </thead>
-    <tbody>
-      ${dbRows.map(row => `
+  <!-- CUSTOMER COPY (No Images) -->
+  <div class="copy-spacing">
+    <div class="print-date">Print Date: ${currentDate} ${currentTime}</div>
+    <div class="title">Sabirs Vegetable Oils (Pvt.) Ltd.</div>
+    <div class="title">ORDER SLIP</div>
+    <div class="copy-label">Customer Copy</div>
+    <div style="display: flex; justify-content: space-between; border: 1px solid black; border-left: 1px solid black; height: 90px;">
+      <table class="info-table" style="width: 33.33%; border-right: 1px solid black;">
         <tr>
-          <td>${row.dcNo || ""}</td>
-          <td>${row.doNo || ""}</td>
-          <td>${row.customerName || ""}</td>
-          <td>${row.itemCode || ""}</td>
-          <td>${row.itemDescription || ""}</td>
-          <td>${row.dcQty || ""}</td>
+          <td class="label-cell">Slip No:</td>
+          <td class="value-cell"><span class="slip-no-value">${apiData?.slipNo || ""}</span></td>
         </tr>
-      `).join("")}
-    </tbody>
-  </table>
+        <tr><td class="label-cell">Time In:</td><td class="value-cell">${displaySlipInTime}</td></tr>
+      </table>
+      <div class="center-wrapper" style="width: 33.33%; display: flex; align-items: center; justify-content: center; border-right: 1px solid black; height: 100%;">
+        <div class="center-box" style="height: 100%; width: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; border: none; padding: 4px 6px;">
+          <div class="truck-label" style="font-size: 12px; font-weight: 900; border-bottom: 1px solid black; width: 100%; text-align: center; padding-bottom: 3px; margin-bottom: 3px;">Truck #</div>
+          <span class="vehicle-no" style="font-size: 14px; font-weight: 900; text-align: center; width: 100%;">${vehicleNo || apiData?.vehicleNo || "N/A"}</span>
+        </div>
+      </div>
+      <table class="info-table" style="width: 33.33%; border-right: 1px solid black;">
+        <tr><td class="label-cell">First Weight:</td><td class="value-cell">${firstWeight ? parseFloat(firstWeight).toLocaleString("en-IN") : ""}</td></tr>
+      </table>
+    </div>
 
-  <div class="totals">
-    <div>Freight Payment: ${formatFreightWithCommas(apiData?.freight || "")}</div>
-    <div>Grand Total: ${grandTotal.toLocaleString('en-IN')}</div>
+    ${customerCopyTableHTML}
+
+    <div class="totals">
+      <div>Grand Total: ${grandTotal.toLocaleString('en-IN')}</div>
+    </div>
+    ${signaturesHTML}
   </div>
-  ${signaturesHTML}
 </div>
 </body>
-</html>`;
+</html>
+`;
 };
-
-
-
 
 const handleSalesDataChange = (
   index: number,
@@ -1206,7 +1378,7 @@ const loadDataByWbId = async (wbId: number) => {
         second_weight_by: master.second_weight_by || "",
 
         // ⭐ MASTER TABLE FIELDS
-        regType: regTypeValue,
+        reg_type: master.reg_type || "R",
         excBags: excBagsValue,
 
         // ⭐ DETAILS TABLE FIELDS
@@ -1515,11 +1687,13 @@ const initialFormData = {
   isSecondWeightSaved: false,   
   excBags: false, 
   regType: "NULL",
-  reg_type: "REGISTER",     
+  reg_type: "NULL",     
   grossWBD: "",          
   purchase: "NULL",     
   sale: ""         
 };
+
+
 
 
   const [formData, setFormData] = useState(initialFormData);
@@ -1553,6 +1727,11 @@ const initialFormData = {
   const [itemSearchQuery, setItemSearchQuery] = useState("");
 const [selectedBranch, setSelectedBranch] = useState<number | null>(null);
 
+
+
+
+ // ✅ 1st Weight Button
+    const isFirstWeightDisabled = formData.isFirstWeightSaved || isRegTypeNull();
 
 const filteredCustomers = useMemo(() => {
   if (!customers || customers.length === 0) {
@@ -1606,8 +1785,8 @@ const filteredCustomers = useMemo(() => {
     const query = itemSearchQuery.trim().toLowerCase();
 
     if (!query) {
-      // Show only first 5 items when no search query
-      return items.slice(0, 5);
+      // Show only first 10 items when no search query
+      return items.slice(0, 10);
     }
 
     // Fast case-insensitive search with early termination
@@ -1630,63 +1809,50 @@ const filteredCustomers = useMemo(() => {
 useEffect(() => {
   const firstWeight = parseFloat(formData.firstWeight) || 0;
   const secondWeight = parseFloat(formData.secondWeight) || 0;
-  const wtPerBag = parseFloat(formData.wtPerBag) || 0;
-  const noOfBags = parseFloat(formData.noOfBags) || 0;
+  
+  // ✅ Use masterBardanaWeight and round it properly
+  const bardanaWeightRaw = parseFloat(formData.masterBardanaWeight) || 0;
+  const bardanaWeight = Math.round(bardanaWeightRaw); // ✅ Round to nearest integer
 
-  // ✅ Bardana Weight - Always calculate and keep this value
-  const bardanaWeight = wtPerBag * noOfBags;
-  const bardanaWeightRounded = Math.round(bardanaWeight);
+  console.log("🔍 DEBUG - Weights Calculation:", {
+    firstWeight,
+    secondWeight,
+    masterBardanaWeight_raw: formData.masterBardanaWeight,
+    bardanaWeightRaw,
+    bardanaWeight_rounded: bardanaWeight,
+  });
 
-  // ✅ Base Gross Weight (Second Weight - First Weight)
-  const baseGrossWeight = secondWeight - firstWeight;
+  // ✅ Gross Weight = (Second Weight - First Weight) - Bardana Weight
+  const grossWeight = (secondWeight - firstWeight) - bardanaWeight;
+  const grossWeightRounded = Math.round(grossWeight);
 
-  // ✅ If excBags is checked, subtract bardana weight from gross and net
-  let grossWeightRounded;
-  let netWeightRounded;
+  // ✅ Net Weight = Gross Weight (same as gross weight after bardana subtraction)
+  const netWeightRounded = Math.round(grossWeight);
 
-  if (formData.excBags) {
-    // ✅ ExcBags checked: Subtract bardana weight from gross and net
-    grossWeightRounded = Math.round(baseGrossWeight - bardanaWeight);
-    netWeightRounded = Math.round(baseGrossWeight - bardanaWeight);
-  } else {
-    // ✅ ExcBags NOT checked: No subtraction
-    grossWeightRounded = Math.round(baseGrossWeight);
-    netWeightRounded = Math.round(baseGrossWeight);
-  }
-
-  // ✅ Gross WBD Calculation
-  const grossWBD = Math.round(grossWeightRounded + bardanaWeightRounded);
+  // ✅ Gross WBD - No change (Second Weight - First Weight)
+  const grossWBD = Math.round(secondWeight - firstWeight);
 
   setFormData((prev) => ({
     ...prev,
-    bardanaWeight: bardanaWeightRounded.toString(),  // ✅ Always set bardana weight
     grossWeight: grossWeightRounded.toString(),
     netWeight: netWeightRounded.toString(),
     grossWBD: grossWBD.toString(),
-    grossWBDExact: grossWBD,
   }));
 
-  console.log("🔄 Sale Weights Calculated:", {
+  console.log("🔄 Weights Calculated:", {
     firstWeight,
     secondWeight,
-    wtPerBag,
-    noOfBags,
-    bardanaWeight: bardanaWeightRounded,
-    baseGrossWeight,
-    excBags: formData.excBags,
+    bardanaWeight,
     grossWeight: grossWeightRounded,
     netWeight: netWeightRounded,
-    grossWBD,
+    grossWBD: grossWBD,
   });
 
 }, [
   formData.firstWeight,
   formData.secondWeight,
-  formData.wtPerBag,
-  formData.noOfBags,
-  formData.excBags,
+  formData.masterBardanaWeight,
 ]);
-
 
 
 useEffect(() => {
@@ -1751,7 +1917,8 @@ const totalWeightDiff = useMemo(() => {
 
 
   
-  interface SalesRow {
+interface SalesRow {
+  // Basic Fields
   doId: string;
   dcNo: string;
   doNo: string;
@@ -1762,15 +1929,22 @@ const totalWeightDiff = useMemo(() => {
   dcQty: string;
   doQty: string;
   branch: string;
+  
+  // Optional Fields
   branchId?: string | number;
   dcId?: string;
   customerId?: number | null;
   itemId?: string;
   itemCode?: string;
-
-    // ✅ Add this
   freight?: string | number;
-    isFetched?: boolean;
+  isFetched?: boolean;
+  
+  // ✅ Bardana Fields
+  bardanaType?: string;
+  wtPerBag?: string;
+  bardanaWeight?: string;
+  noOfBags?: string;
+  bardanaTypeId?: number | null;
 }
 
 
@@ -1789,9 +1963,12 @@ const fetchDcData = async (dcNo: string, rowIndex: number) => {
   }
 
   try {
-    // ✅ API call with branch ID (for backend filtering)
-    const apiUrl = `http://portal.sabirsgroup.com:8184/ords/sabroso_ords/wb/dc_data?dc_no=${dcNo}&branch=${formData.branchId}`;
-    console.log("Fetching URL with Branch ID:", apiUrl);
+    // ✅ Get reg_type from formData
+    const regType = formData.reg_type || 'R';
+    
+    // ✅ API call with branch ID AND reg_type (for backend filtering)
+    const apiUrl = `http://portal.sabirsgroup.com:8184/ords/sabroso_ords/wb-om/dc_data?dc_no=${dcNo}&branch=${formData.branchId}&reg_type=${regType}`;
+    console.log("Fetching URL with Branch ID and Reg Type:", apiUrl);
 
     const response = await fetch(apiUrl);
 
@@ -1810,14 +1987,41 @@ const fetchDcData = async (dcNo: string, rowIndex: number) => {
       );
       
       const branchName = selectedBranch?.branch_name || "";
-      const branchIdForDB = formData.branchId; // This is for DB
+      const branchIdForDB = formData.branchId;
 
       console.log("Branch Name for display:", branchName);
       console.log("Branch ID for DB:", branchIdForDB);
+      console.log("Reg Type for API:", regType);
+
+      // ✅ Store existing bardana values before updating
+      const existingBardanaType = salesData[rowIndex]?.bardanaType || '';
+      const existingWtPerBag = salesData[rowIndex]?.wtPerBag || '';
+      const existingBardanaWeight = salesData[rowIndex]?.bardanaWeight || '';
+      const existingNoOfBags = salesData[rowIndex]?.noOfBags || '';
+
+      console.log("📦 Existing bardana values:", {
+        bardanaType: existingBardanaType,
+        wtPerBag: existingWtPerBag,
+        bardanaWeight: existingBardanaWeight,
+        noOfBags: existingNoOfBags,
+      });
 
       // Prepare new entries for salesData
-      const newEntries: SalesRow[] = data.items.map((item: any) => {
+      const newEntries: SalesRow[] = data.items.map((item: any, index: number) => {
         const freightValue = parseFloat(item.freight || item.freight_amount || "0");
+        
+        // ✅ FIX: dcQty ko handle karo - 0 bhi aaye toh set ho
+        const dcQty = item.dc_qty !== undefined && item.dc_qty !== null && item.dc_qty !== ''
+          ? String(item.dc_qty)
+          : "";
+        
+        // ✅ FIX: del_qty ko handle karo - 0 bhi aaye toh set ho
+        const doQty = item.del_qty !== undefined && item.del_qty !== null && item.del_qty !== ''
+          ? String(item.del_qty)
+          : "";
+        
+        // ✅ Preserve existing bardana values for the first row only
+        const isFirstRow = index === 0;
         
         return {
           doId: item.do_id || "",
@@ -1829,16 +2033,22 @@ const fetchDcData = async (dcNo: string, rowIndex: number) => {
             ? new Date(item.dc_date).toISOString().split("T")[0]
             : "",
           itemDescription: item.item_desc || "",
-          dcQty: item.dc_qty ? String(item.dc_qty) : "",
-          doQty: item.del_qty ? String(item.del_qty) : "",
-          branch: branchName,           // ✅ Branch NAME for display (frontend)
-          branchId: branchIdForDB,      // ✅ Branch ID for DB (backend)
+          dcQty: dcQty,
+          doQty: doQty,
+          branch: branchName,
+          branchId: branchIdForDB,
           dcId: item.dc_id || "",
           customerId: item.customer_id != null ? Number(item.customer_id) : null,
           itemId: item.item_id || "",
           itemCode: item.item_code || "",
           freight: freightValue,
-          isFetched: true
+          isFetched: true,
+          regType: regType,
+          // ✅ Preserve existing bardana values
+          bardanaType: isFirstRow ? existingBardanaType : '',
+          wtPerBag: isFirstRow ? existingWtPerBag : '',
+          bardanaWeight: isFirstRow ? existingBardanaWeight : '',
+          noOfBags: isFirstRow ? existingNoOfBags : '',
         };
       });
 
@@ -1846,13 +2056,21 @@ const fetchDcData = async (dcNo: string, rowIndex: number) => {
       const newDetailsEntries = data.items.map((item: any) => {
         const freightValue = parseFloat(item.freight || item.freight_amount || "0");
         
+        const dcQty = item.dc_qty !== undefined && item.dc_qty !== null && item.dc_qty !== ''
+          ? String(item.dc_qty)
+          : "";
+        
+        const doQty = item.del_qty !== undefined && item.del_qty !== null && item.del_qty !== ''
+          ? String(item.del_qty)
+          : "";
+        
         return {
           customerName: item.customer_name || "",
           customerId: item.customer_id != null ? Number(item.customer_id) : null,
           itemCode: item.item_code || "",
           itemDescription: item.item_desc || "",
-          dcQty: item.dc_qty ? String(item.dc_qty) : "",
-          doQty: item.del_qty ? String(item.del_qty) : "",
+          dcQty: dcQty,
+          doQty: doQty,
           uom: "",
           rate: "",
           amount: "",
@@ -1864,10 +2082,11 @@ const fetchDcData = async (dcNo: string, rowIndex: number) => {
             : "",
           dcId: item.dc_id || "",
           itemId: item.item_id || "",
-          branchId: branchIdForDB,      // ✅ Branch ID for DB
+          branchId: branchIdForDB,
           dcNo: item.dc_no || "",
-          branch: branchName,           // ✅ Branch NAME for display
+          branch: branchName,
           freight: freightValue,
+          regType: regType,
         };
       });
 
@@ -1875,7 +2094,17 @@ const fetchDcData = async (dcNo: string, rowIndex: number) => {
       setSalesData((prev: SalesRow[]) => {
         const updated = [...prev];
         newEntries.forEach((entry, index) => {
-          updated[rowIndex + index] = entry;
+          // ✅ Merge existing data with new data (preserve bardana fields)
+          const existingRow = updated[rowIndex + index] || {};
+          updated[rowIndex + index] = {
+            ...existingRow,
+            ...entry,
+            // ✅ Explicitly preserve bardana fields from existing row
+            bardanaType: existingRow.bardanaType || entry.bardanaType || '',
+            wtPerBag: existingRow.wtPerBag || entry.wtPerBag || '',
+            bardanaWeight: existingRow.bardanaWeight || entry.bardanaWeight || '',
+            noOfBags: existingRow.noOfBags || entry.noOfBags || '',
+          };
         });
         return updated;
       });
@@ -1898,29 +2127,27 @@ const fetchDcData = async (dcNo: string, rowIndex: number) => {
             doDate: entry.doDate,
             dcId: entry.dcId,
             itemId: entry.itemId,
-            branchId: entry.branchId,   // ✅ Branch ID for DB
+            branchId: entry.branchId,
             dcNo: entry.dcNo,
-            branch: entry.branch,        // ✅ Branch NAME for display
+            branch: entry.branch,
             freight: entry.freight,
+            regType: entry.regType,
           };
         });
         return updated;
       });
 
       // Calculate TOTAL freight
-    const totalFreightFromDC =
-  parseFloat(data.items?.[0]?.freight || data.items?.[0]?.freight_amount || "0") || 0;
+      const totalFreightFromDC =
+        parseFloat(data.items?.[0]?.freight || data.items?.[0]?.freight_amount || "0") || 0;
 
       // Update master freight
       setFormData((prev) => {
-        const currentFreight = parseFloat(prev.freight || "0") || 0;
-   const newTotalFreight = totalFreightFromDC;
-        
         return {
           ...prev,
           dcQty: newEntries[0]?.dcQty || prev.dcQty,
           netWeight: prev.netWeight || "",
-          freight: String(newTotalFreight)
+          freight: String(totalFreightFromDC)
         };
       });
 
@@ -1934,9 +2161,6 @@ const fetchDcData = async (dcNo: string, rowIndex: number) => {
     alert("Failed to fetch DC data. Please check the DC number and try again.");
   }
 };
-
-
-
 
 
 
@@ -2287,7 +2511,7 @@ const handleChange = (
       
       // ✅ Agar reg_type empty hai toh REGISTER set karein
       if (name === 'reg_type' && (!value || value === '')) {
-        newValue = 'REGISTER';
+        newValue = 'R';
       }
       
       // ✅ Purchase ya sale empty ho toh NULL set karein
@@ -2394,6 +2618,31 @@ const handleChange = (
     setPlateReading(false);
   };
 
+
+   // ✅ Check if DC No exists in salesData (memoized)
+   // ✅ Check if DC No exists in salesData (memoized) - FOR NUMBER
+const hasDcNoInSalesData = useMemo(() => {
+    if (!onlineMode) return true;
+    return salesData.some((row) => {
+        const dcNo = row?.dcNo;
+        // ✅ dcNo is number, check if it exists and > 0
+        return dcNo && dcNo > 0;
+    });
+}, [salesData, onlineMode]);
+
+
+   // ✅ Save button disable condition
+    const isSaveDisabled = useMemo(() => {
+        if (loading || disableSaveButton) {
+            return true;
+        }
+        if (onlineMode && !hasDcNoInSalesData) {
+            return true;
+        }
+        return false;
+    }, [loading, disableSaveButton, onlineMode, hasDcNoInSalesData]);
+
+
   // ===== MAXIMUM PERFORMANCE STATIC DATA FETCHING =====
   // Fetch entry types, branches, customers, and items with aggressive caching
   const { data: entryTypesData = [] } = useQuery({
@@ -2425,7 +2674,7 @@ const handleChange = (
         console.log("Fetching customers for branch:", branchId);
         
         try {
-            const response = await fetch(`/api/customers?branch_id=${branchId}`);
+            const response = await fetch("/api/customers");
             const result = await response.json();
             
             if (result.success) {
@@ -2641,7 +2890,7 @@ useEffect(() => {
 
     // ✅ entry_type is always 'SALE'
     const entryType = 'SALE';
-    const regType = formData.reg_type?.trim()?.toUpperCase() || 'REGISTER';
+    const regType = formData.reg_type?.trim()?.toUpperCase() || 'R';
 
     console.log(`🔍 Fetching slip number for entry_type: ${entryType}, reg_type: ${regType}`);
 
@@ -2776,10 +3025,10 @@ const captureFirstWeight = async () => {
     if (formData.slipNo) {
       try {
         // ✅ Get reg_type from formData (REGISTER/UNREGISTER)
-        const regType = formData.reg_type || 'REGISTER';
+        const regType = formData.reg_type || 'R';
         const entryType = formData.entryType || 'SALE';
 
-        console.log(`📸 Capturing first weight image for slip: ${formData.slipNo} (${regType})`);
+      //  console.log(`📸 Capturing first weight image for slip: ${formData.slipNo} (${regType})`);
 
         const captureResponse = await fetch("/api/capture/first-weight", {
           method: "POST",
@@ -2801,18 +3050,18 @@ const captureFirstWeight = async () => {
         } else {
           const errorData = await captureResponse.json();
           console.error("❌ Backend Error:", errorData);
-          alert(`❌ Failed to capture image: ${errorData.message || 'Unknown error'}`);
+         // alert(`❌ Failed to capture image: ${errorData.message || 'Unknown error'}`);
         }
       } catch (imageError) {
         console.error("❌ Error capturing/updating first weight image:", imageError);
-        alert("❌ Error capturing image. Please try again.");
+       // alert("❌ Error capturing image. Please try again.");
       }
     } else {
       console.warn("⚠️ No slip number provided, skipping image capture");
     }
   } catch (error) {
     console.error("❌ Error fetching weight data:", error);
-    alert("Failed to capture first weight reading");
+   // alert("Failed to capture first weight reading");
   }
 };
 
@@ -2837,10 +3086,10 @@ const captureSecondWeight = async () => {
     if (formData.slipNo) {
       try {
         // ✅ Get reg_type from formData (REGISTER/UNREGISTER)
-        const regType = formData.reg_type || 'REGISTER';
+        const regType = formData.reg_type || 'R';
         const entryType = formData.entryType || 'SALE';
 
-        console.log(`📸 Capturing second weight image for slip: ${formData.slipNo} (${regType})`);
+     //   console.log(`📸 Capturing second weight image for slip: ${formData.slipNo} (${regType})`);
 
         const captureResponse = await fetch("/api/capture/second-weight", {
           method: "POST",
@@ -2862,18 +3111,18 @@ const captureSecondWeight = async () => {
         } else {
           const errorData = await captureResponse.json();
           console.error("❌ Backend Error:", errorData);
-          alert(`❌ Failed to capture image: ${errorData.message || 'Unknown error'}`);
+          // alert(`❌ Failed to capture image: ${errorData.message || 'Unknown error'}`);
         }
       } catch (imageError) {
         console.error("❌ Error capturing/updating second weight image:", imageError);
-        alert("❌ Error capturing image. Please try again.");
+        // alert("❌ Error capturing image. Please try again.");
       }
     } else {
       console.warn("⚠️ No slip number provided, skipping image capture");
     }
   } catch (error) {
     console.error("❌ Error fetching weight data:", error);
-    alert("Failed to capture second weight reading");
+    // alert("Failed to capture second weight reading");
   }
 };
 
@@ -2925,6 +3174,9 @@ function autoPrintSlip(
   const hasFirstWeight = masterData.first_weight && parseFloat(masterData.first_weight) > 0;
   const hasSecondWeight = masterData.second_weight && parseFloat(masterData.second_weight) > 0;
 
+  console.log("🔍 autoPrintSlip - hasFirstWeight:", hasFirstWeight);
+  console.log("🔍 autoPrintSlip - hasSecondWeight:", hasSecondWeight);
+
   if (!hasFirstWeight) {
     console.log("No weight data available to print.");
     return;
@@ -2946,6 +3198,7 @@ function autoPrintSlip(
       itemDescription: row.item_desc || "",
       dcQty:           row.dc_qty ? String(row.dc_qty) : (row.igp_qty ? String(row.igp_qty) : ""),
       doQty:           row.do_qty ? String(row.do_qty) : (row.po_qty ? String(row.po_qty) : ""),
+      itemId:          row.item_id || null,  // ✅ Added item_id
     }));
 
   // ✅ vehicle_no masterData se lo, nahi mila to dbRows se
@@ -2956,41 +3209,114 @@ function autoPrintSlip(
   const masterSlipInTime = masterData.slip_in_time || getPKTDateTime();
   const masterSlipOutTime = masterData.slip_out_time || null;
 
+  // ✅ IMPORTANT: apiData ko masterData se properly map karo
+  const mappedApiData = {
+    ...apiData,
+    // ✅ Fields from masterData
+    slipNo: masterData.slip_no || apiData?.slipNo || "",
+    slip_in_time: masterData.slip_in_time || apiData?.slip_in_time || "",
+    slip_out_time: masterData.slip_out_time || apiData?.slip_out_time || "",
+    vehicle_no: masterData.vehicle_no || apiData?.vehicle_no || "",
+    firstWeight: masterData.first_weight || apiData?.firstWeight || "",
+    secondWeight: masterData.second_weight || apiData?.secondWeight || "",
+    netWeight: masterData.net_weight || apiData?.netWeight || "",
+    grossWeight: masterData.gross_weight || apiData?.grossWeight || "",
+    gross_w_b_d: masterData.gross_w_b_d || apiData?.gross_w_b_d || "",  // ✅ Added gross_w_b_d
+    bardanaWeight: masterData.bardana_weight || apiData?.bardanaWeight || "",
+    noOfBags: masterData.no_of_bags || apiData?.noOfBags || "",
+    wtPerBag: masterData.weight_per_bags || apiData?.wtPerBag || "",
+    bardanaType: masterData.bardana_type || apiData?.bardanaType || "",
+    itemDesc: masterData.item_desc || apiData?.itemDesc || "",
+    igpNo: masterData.igp_no || apiData?.igpNo || "",
+    freight: masterData.freight || apiData?.freight || "",
+    remarks: masterData.remarks || apiData?.remarks || "",
+    vendor: masterData.vendor_name || apiData?.vendor || "",
+    entryType: masterData.entry_type || apiData?.entryType || "SALE",
+    qualityDeduction: masterData.quality_deduction || apiData?.qualityDeduction || "",
+    supplierWeight: masterData.supplier_weight || apiData?.supplierWeight || "",
+    created_by_name: masterData.created_by_name || apiData?.created_by_name || "",
+    second_weight_by_name: masterData.second_weight_by_name || apiData?.second_weight_by_name || "",
+    second_weight_by: masterData.second_weight_by || apiData?.second_weight_by || "",
+    reg_type: masterData.reg_type || apiData?.reg_type || "R",
+    pur_reg_type: masterData.pur_reg_type || apiData?.pur_reg_type || "R",
+    regType: masterData.reg_type || apiData?.regType || "R",
+    details: salesData || apiData?.details || [],
+  };
+
+  // ✅ Check if any detail row has specific item_id
+  const specificItemIds = [6517, 5877, 4307];
+  
+  // ✅ Check if ANY row in details has these item_ids
+  const hasSpecificItem = (salesData || []).some((row: any) => {
+    const itemId = parseInt(row.item_id);
+    return specificItemIds.includes(itemId);
+  });
+
+  console.log("🔍 autoPrintSlip - Has Specific Item (6517, 5877, 4307):", hasSpecificItem);
+
+  let netWeightForReport = "";
+
+  if (hasSpecificItem) {
+    // ✅ If specific item exists, use grossWeight
+    netWeightForReport = mappedApiData.grossWeight || "";
+    console.log("📊 Specific item found - Using grossWeight for Net Weight:", netWeightForReport);
+  } else {
+    // ✅ If no specific item, use gross_w_b_d
+    netWeightForReport = mappedApiData.gross_w_b_d ? String(mappedApiData.gross_w_b_d) : "";
+    console.log("📊 No specific item - Using gross_w_b_d for Net Weight:", netWeightForReport);
+  }
+
+  // ✅ Update mappedApiData with the correct netWeight
+  const updatedApiData = {
+    ...mappedApiData,
+    netWeight: netWeightForReport,
+  };
+
+  console.log("✅ Updated apiData for autoPrint:", {
+    hasSpecificItem,
+    original_netWeight: mappedApiData.netWeight,
+    original_grossWeight: mappedApiData.grossWeight,
+    original_gross_w_b_d: mappedApiData.gross_w_b_d,
+    final_netWeight: netWeightForReport,
+  });
+
+  console.log("✅ Mapped apiData for print:", {
+    slipNo: updatedApiData.slipNo,
+    itemDesc: updatedApiData.itemDesc,
+    wtPerBag: updatedApiData.wtPerBag,
+    bardanaType: updatedApiData.bardanaType,
+    noOfBags: updatedApiData.noOfBags,
+    firstWeight: updatedApiData.firstWeight,
+    secondWeight: updatedApiData.secondWeight,
+    netWeight: updatedApiData.netWeight,
+  });
+
+  // ✅ CONDITION: If both weights exist → generateReportHTML (Full Weighbridge Slip)
   if (hasFirstWeight && hasSecondWeight) {
-    const oldReportHTML = generateReportHTML(
+    console.log("✅ Both weights exist - Printing Full Weighbridge Slip");
+    const reportHTML = generateReportHTML(
       "second",
       masterSlipInTime,
       masterSlipOutTime,
       vehicleNo,
-      apiData,
-      dbRows  // ✅
+      updatedApiData,  // ✅ Use updated data
+      dbRows
     );
-    const newReportHTML = generateNewReportHTML(
-      masterSlipInTime,
-      masterSlipOutTime,
-      vehicleNo,
-      apiData,
-      dbRows  // ✅
-    );
-    preparePrintWindow(oldReportHTML, "Weighbridge Report");
-    preparePrintWindow(newReportHTML, "Feeds Dispatch Order");
-
-  } else if (hasFirstWeight) {
-    const oldReportHTML = generateReportHTML(
-      "first",
+    preparePrintWindow(reportHTML, "Weighbridge Report");
+  } 
+  // ✅ CONDITION: If only first weight exists → generateNewReportHTML (Feeds Dispatch Order)
+  else if (hasFirstWeight) {
+    console.log("✅ Only first weight exists - Printing Feeds Dispatch Order");
+    const reportHTML = generateNewReportHTML(
       masterSlipInTime,
       null,
       vehicleNo,
-      apiData,
-      dbRows  // ✅
+      updatedApiData,  // ✅ Use updated data
+      dbRows
     );
-    const window1 = preparePrintWindow(oldReportHTML, "Weight Report");
-    if (window1) {
-      setTimeout(() => window1.print(), 1000);
-    }
+    preparePrintWindow(reportHTML, "Feeds Dispatch Order");
   }
 }
-
   
 
 
@@ -3010,6 +3336,9 @@ const handleSave = async () => {
     setLoading(false);
     return;
   }
+
+
+ 
 
   // ✅ Vehicle number resolve
   let finalVehicleNo = "";
@@ -3050,24 +3379,24 @@ console.log("slipInTime =", slipInTime);
       : formData.slipOutTime || null;
 
   // ✅ Weight diff check
-  if (
-    formData.firstWeight &&
-    formData.secondWeight &&
-    formData.netWeight &&
-    parseFloat(formData.firstWeight) > 0 &&
-    parseFloat(formData.secondWeight) > 0 &&
-    parseFloat(formData.netWeight) > 0
-  ) {
-    if (((totalWeightDiff) > 30) || ((totalWeightDiff) < -30)) {
-      alert(
-        `Total Weight Difference (${totalWeightDiff.toFixed(
-          2
-        )}) is outside acceptable range of ±30. Entry cannot be saved.`
-      );
-      setLoading(false);
-      return;
-    }
-  }
+// if (  
+//     formData.firstWeight &&
+//     formData.secondWeight &&
+//     formData.netWeight &&
+//     parseFloat(formData.firstWeight) > 0 &&
+//     parseFloat(formData.secondWeight) > 0 &&
+//     parseFloat(formData.netWeight) > 0
+//   ) {
+//     if (((totalWeightDiff) > 30) || ((totalWeightDiff) < -30)) {
+//       alert(
+//         `Total Weight Difference (${totalWeightDiff.toFixed(
+//           2
+//         )}) is outside acceptable range of ±30. Entry cannot be saved.`
+//       );
+//       setLoading(false);
+//       return;
+//     }
+//   }
 
   try {
     let savedWbId: number;
@@ -3080,7 +3409,7 @@ console.log("slipInTime =", slipInTime);
       // 🔄 UPDATE MODE
       console.log("Updating existing sales record with wb_id:", editingWbId);
 
-    const updatePayload = {
+const updatePayload = {
   // ⭐ Basic Fields
   slip_no: formData.slipNo || null,
   slip_in_time: slipInTime,
@@ -3096,18 +3425,24 @@ console.log("slipInTime =", slipInTime);
   net_weight: formData.netWeight
     ? parseFloat(formData.netWeight)
     : null,
-  bardana_weight: formData.bardanaWeight
-    ? parseFloat(formData.bardanaWeight)
+  
+  // ✅ FIX: Use masterBardanaWeight instead of bardanaWeight
+  bardana_weight: formData.masterBardanaWeight
+    ? parseFloat(formData.masterBardanaWeight)
     : null,
+  
   gross_weight: formData.grossWeight
     ? parseFloat(formData.grossWeight)
     : null,
-  gross_wbd: (parseFloat(formData.grossWeight) || 0) + (parseFloat(formData.bardanaWeight) || 0),
+  
+  // ✅ FIX: Gross WBD = Gross Weight + Bardana Weight (use masterBardanaWeight)
+  gross_wbd: (parseFloat(formData.grossWeight) || 0) + (parseFloat(formData.masterBardanaWeight) || 0),
+  
   freight: formData.freight ? parseFloat(formData.freight) : null,
   
-  // ⭐ Bardana Fields (for sale)
-  bardana_type: formData.bardanaType || null,
-  weight_per_bags: formData.wtPerBag ? parseFloat(formData.wtPerBag) : null,
+  // ⭐ REMOVED: Bardana Fields from master (these go to details table)
+  // bardana_type: formData.bardanaType || null,
+  // weight_per_bags: formData.wtPerBag ? parseFloat(formData.wtPerBag) : null,
   
   // ⭐ Other Fields
   remarks: formData.remarks || null,
@@ -3144,146 +3479,160 @@ console.log("slipInTime =", slipInTime);
   igp_date: salesData.find((row) => row.doDate)?.doDate || null,
 
   // ⭐ Registration Type - Sale module
-  reg_type: formData.reg_type === "REGISTER" ? "REGISTER" : 
-             formData.reg_type === "UNREGISTER"? "UNREGISTER" : "Null",
+  reg_type: formData.reg_type === "R" ? "R" : 
+             formData.reg_type === "U"? "U" : "Null",
   
   // ⭐ Exc.Bags - Master
   exc_bags: formData.excBags ? 1 : 0,
   bardana_bag: formData.excBags ? 'Y' : 'N',
   
   // ⭐ Con Field (if needed)
-  // con: formData.igpCheckbox ? 'Y' : 'N',  // Uncomment if con exists in master
+  // con: formData.igpCheckbox ? 'Y' : 'N',
+};
+// ✅ UPDATE MASTER RECORD
+const updateResponse = await fetch(
+  `/api/purchase/update/${editingWbId}`,
+  {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(updatePayload),
+  }
+);
+
+if (!updateResponse.ok) {
+  const errorText = await updateResponse.text();
+  throw new Error(`Failed to update sales record: ${errorText}`);
+}
+
+savedWbId = editingWbId;
+console.log("✅ Sales record updated successfully");
+
+// ✅ UPDATE DETAILS TABLE WITH BARDANA FIELDS
+// Filter non-empty rows
+const nonEmptyRows = salesData.filter(
+  (row) =>
+    row.dcNo ||
+    row.doNo ||
+    row.customerName ||
+    row.vehicleNo ||
+    row.itemDescription ||
+    row.dcQty ||
+    row.doQty
+);
+
+const totalFeedBags = nonEmptyRows.reduce(
+  (sum, row) => sum + (parseFloat(row.doQty) || 0),
+  0
+);
+
+// ✅ First, delete existing child records for this wb_id
+console.log("🗑️ Clearing existing child records for wb_id:", savedWbId);
+try {
+  const deleteResponse = await fetch(`/api/purchase-items/by-wbid/${savedWbId}`, {
+    method: "DELETE"
+  });
+  
+  if (deleteResponse.ok) {
+    console.log("✅ Existing child records deleted");
+  }
+} catch (deleteError) {
+  console.log("Note: Could not delete old records, continuing:", deleteError);
+}
+
+// ✅ Save new child records with bardana fields
+for (const row of nonEmptyRows) {
+  // ✅ Get bardana fields from the row (with fallback to formData)
+  const bardanaType = row.bardanaType || formData.bardanaType || null;
+  const wtPerBag = row.wtPerBag || formData.wtPerBag || null;
+  const bardanaWeight = row.bardanaWeight || formData.masterBardanaWeight || null;
+  const noOfBags = row.noOfBags || formData.noOfBags || null;
+
+  console.log("📤 Saving bardana fields to details:", {
+    bardanaType,
+    wtPerBag,
+    bardanaWeight,
+    noOfBags,
+  });
+
+ const salesItemPayload = {
+  branch_id:
+    formData.branchId &&
+    formData.branchId !== "undefined" &&
+    formData.branchId.trim() !== ""
+      ? parseInt(formData.branchId, 10)
+      : user?.branchId
+        ? parseInt(user.branchId.toString(), 10)
+        : null,
+
+  wb_id: savedWbId,
+  
+  // ⭐ Bardana Fields - Save to details table
+  bardana_type: bardanaType,
+  weight_per_bags: wtPerBag ? parseFloat(wtPerBag) : null,  // ✅ Database column name
+  bardana_weight: bardanaWeight ? parseFloat(bardanaWeight) : null,
+  no_of_bags: noOfBags ? parseInt(noOfBags, 10) : null,
+  
+  igp_no: row.dcNo || null,
+  manual_dc_no: row.dcNo || null,
+  dc_id: row.dcId || null,
+  vehicle_no: finalVehicleNo || row.vehicleNo || null,
+  total_feed_bags: totalFeedBags || null,
+  igp_date: row.doDate || null,
+  do_date: row.doDate || null,
+  supplier_weight: null,
+  quality_deduction: null,
+  vendor_name: row.customerName || null,
+  bag_condition: null,
+  po_no: row.doNo || null,
+  po_id: row.po_id ? parseInt(row.po_id, 10) : null,
+  freight_child:
+    row.freight && row.freight !== "" && row.freight !== "0"
+      ? parseFloat(row.freight)
+      : null,
+  item_code: row.itemCode || null,
+  item_desc: row.itemDescription || null,
+  item_id: row.itemId ? parseInt(row.itemId, 10) : null,
+  po_qty:
+    row.doQty && row.doQty.trim() !== ""
+      ? parseFloat(row.doQty)
+      : null,
+  igp_qty:
+    row.dcQty && row.dcQty.trim() !== ""
+      ? parseFloat(row.dcQty)
+      : null,
+  balance_qty: null,
+  customer_name: row.customerName || null,
+  customer_id: row.customerId || null,
+  do_no: row.doNo || null,
+  do_qty:
+    row.doQty && row.doQty.trim() !== ""
+      ? parseFloat(row.doQty)
+      : null,
+  dc_qty:
+    row.dcQty && row.dcQty.trim() !== ""
+      ? parseFloat(row.dcQty)
+      : null,
+  created_by: user?.userid ? parseInt(user.userid.toString(), 10) : null,
+  last_updated_by: user?.userid ? parseInt(user.userid.toString(), 10) : null,
 };
 
-      const updateResponse = await fetch(
-        `/api/purchase/update/${editingWbId}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(updatePayload),
-        }
-      );
+  const salesItemResponse = await fetch("/api/purchase-items", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(salesItemPayload),
+  });
 
-      if (!updateResponse.ok) {
-        const errorText = await updateResponse.text();
-        throw new Error(`Failed to update sales record: ${errorText}`);
-      }
-
-      savedWbId = editingWbId;
-      console.log("Sales record updated successfully");
-
- // ✅ CORRECTION: ADD CHILD RECORD SAVING FOR UPDATE MODE HERE
-  // Filter non-empty rows
-  const nonEmptyRows = salesData.filter(
-    (row) =>
-      row.dcNo ||
-      row.doNo ||
-      row.customerName ||
-      row.vehicleNo ||
-      row.itemDescription ||
-      row.dcQty ||
-      row.doQty
-  );
-
-  const totalFeedBags = nonEmptyRows.reduce(
-    (sum, row) => sum + (parseFloat(row.doQty) || 0),
-    0
-  );
-
-  // First, delete existing child records for this wb_id
-  console.log("Clearing existing child records for wb_id:", savedWbId);
-  try {
-    const deleteResponse = await fetch(`/api/purchase-items/by-wbid/${savedWbId}`, {
-      method: "DELETE"
-    });
-    
-    if (deleteResponse.ok) {
-      console.log("Existing child records deleted");
-    }
-  } catch (deleteError) {
-    console.log("Note: Could not delete old records, continuing:", deleteError);
+  if (!salesItemResponse.ok) {
+    console.error("❌ Failed to save sales item in update mode:", row);
+    // Continue anyway - don't fail the whole update for one item
+  } else {
+    console.log("✅ Sales item saved successfully in update mode");
   }
-
-  // Save new child records
-  for (const row of nonEmptyRows) {
-    const salesItemPayload = {
-      branch_id:
-        formData.branchId &&
-        formData.branchId !== "undefined" &&
-        formData.branchId.trim() !== ""
-          ? parseInt(formData.branchId, 10)
-          : user?.branchId
-            ? parseInt(user.branchId.toString(), 10)
-            : null,
-
-      wb_id: savedWbId,
-      bardana_type: null,
-      igp_no: row.dcNo || null,
-      manual_dc_no: row.dcNo || null,
-      dc_id: row.dcId || null,
-      vehicle_no: finalVehicleNo || row.vehicleNo || null,
-      weight_per_bags: formData.weightPerBags
-        ? parseFloat(formData.weightPerBags)
-        : null,
-      total_feed_bags: totalFeedBags || null,
-      igp_date: row.doDate || null,
-      do_date: row.doDate || null,
-      supplier_weight: null,
-      quality_deduction: null,
-      bardana_weight: null,
-      no_of_bags: null,
-      vendor_name: row.customerName || null,
-      bag_condition: null,
-      po_no: row.doNo || null,
-      po_id: row.po_id ? parseInt(row.po_id, 10) : null,
-      freight_child:
-        row.freight && row.freight !== "" && row.freight !== "0"
-          ? parseFloat(row.freight)
-          : null,
-      item_code: row.itemCode || null,
-      item_desc: row.itemDescription || null,
-      item_id: row.itemId ? parseInt(row.itemId, 10) : null,
-      po_qty:
-        row.doQty && row.doQty.trim() !== ""
-          ? parseFloat(row.doQty)
-          : null,
-      igp_qty:
-        row.dcQty && row.dcQty.trim() !== ""
-          ? parseFloat(row.dcQty)
-          : null,
-      balance_qty: null,
-      customer_name: row.customerName || null,
-      customer_id: row.customerId || null,
-      do_no: row.doNo || null,
-      do_qty:
-        row.doQty && row.doQty.trim() !== ""
-          ? parseFloat(row.doQty)
-          : null,
-      dc_qty:
-        row.dcQty && row.dcQty.trim() !== ""
-          ? parseFloat(row.dcQty)
-          : null,
-      created_by: user?.userid ? parseInt(user.userid.toString(), 10) : null,
-      last_updated_by: user?.userid ? parseInt(user.userid.toString(), 10) : null,
-    };
-
-    const salesItemResponse = await fetch("/api/purchase-items", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(salesItemPayload),
-    });
-
-    if (!salesItemResponse.ok) {
-      console.error("Failed to save sales item in update mode:", row);
-      // Continue anyway - don't fail the whole update for one item
-    } else {
-      console.log("Sales item saved successfully in update mode");
-    }
-  }
+}
 
       setFormData(prev => ({
         ...prev,
@@ -3320,7 +3669,7 @@ console.log("slipInTime =", slipInTime);
             console.log("📥 Sale DB data fetched for IGP API (edit mode):", dbData);
 
             const igpResp = await fetch(
-              "http://portal.sabirsgroup.com:8184/ords/sabroso_ords/wb/wb-update-on-igp",
+              "http://portal.sabirsgroup.com:8184/ords/sabroso_ords/wb-om/wb-update-on-igp",
               {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -3366,70 +3715,84 @@ console.log("slipInTime =", slipInTime);
       const newWbId = maxWbId + 1;
 
       // Prepare master data payload with proper null handling for numeric fields
-      const masterPayload = {
-        slip_no: formData.slipNo || null,
-        slip_in_time: slipInTime,
+    const masterPayload = {
+  slip_no: formData.slipNo || null,
+  slip_in_time: slipInTime,
 
-        first_weight:
-          formData.firstWeight && formData.firstWeight.trim() !== ""
-            ? parseFloat(formData.firstWeight)
-            : null,
-        second_weight:
-          formData.secondWeight && formData.secondWeight.trim() !== ""
-            ? parseFloat(formData.secondWeight)
-            : null,
-        net_weight:
-          formData.netWeight && formData.netWeight.trim() !== ""
-            ? parseFloat(formData.netWeight)
-            : null,
-        bardana_weight:
-          formData.bardanaWeight && formData.bardanaWeight.trim() !== ""
-            ? parseFloat(formData.bardanaWeight)
-            : null,
-        gross_weight:
-          formData.grossWeight && formData.grossWeight.trim() !== ""
-            ? parseFloat(formData.grossWeight)
-            : null,
-        freight:
-          formData.freight && formData.freight.trim() !== ""
-            ? parseFloat(formData.freight)
-            : null,
-        remarks: formData.remarks || null,
-        driver_name: formData.driverName || null,
-        company_id:
-          formData.companyId &&
-          formData.companyId !== "undefined" &&
-          formData.companyId.trim() !== ""
-            ? parseInt(formData.companyId, 10)
-            : null,
-        branch_id:
-          formData.branchId &&
-          formData.branchId !== "undefined" &&
-          formData.branchId.trim() !== ""
-            ? parseInt(formData.branchId, 10)
-            : null,
-        online_entry: formData.onlineEntry === "Yes" ? "Yes" : null,
-        offline_entry: formData.offlineEntry === "Yes" ? "Yes" : null,
+  first_weight:
+    formData.firstWeight && formData.firstWeight.trim() !== ""
+      ? parseFloat(formData.firstWeight)
+      : null,
+  second_weight:
+    formData.secondWeight && formData.secondWeight.trim() !== ""
+      ? parseFloat(formData.secondWeight)
+      : null,
+  net_weight:
+    formData.netWeight && formData.netWeight.trim() !== ""
+      ? parseFloat(formData.netWeight)
+      : null,
+  
+  // ✅ FIX: Use masterBardanaWeight for bardana_weight
+  bardana_weight:
+    formData.masterBardanaWeight && formData.masterBardanaWeight.trim() !== ""
+      ? parseFloat(formData.masterBardanaWeight)
+      : null,
+  
+  gross_weight:
+    formData.grossWeight && formData.grossWeight.trim() !== ""
+      ? parseFloat(formData.grossWeight)
+      : null,
+  
+  freight:
+    formData.freight && formData.freight.trim() !== ""
+      ? parseFloat(formData.freight)
+      : null,
+  remarks: formData.remarks || null,
+  driver_name: formData.driverName || null,
+  company_id:
+    formData.companyId &&
+    formData.companyId !== "undefined" &&
+    formData.companyId.trim() !== ""
+      ? parseInt(formData.companyId, 10)
+      : null,
+  branch_id:
+    formData.branchId &&
+    formData.branchId !== "undefined" &&
+    formData.branchId.trim() !== ""
+      ? parseInt(formData.branchId, 10)
+      : null,
+  online_entry: formData.onlineEntry === "Yes" ? "Yes" : null,
+  offline_entry: formData.offlineEntry === "Yes" ? "Yes" : null,
 
-        created_by: user?.userid || null,
-        creation_date: formData.creationDate || null,
-        last_updated_by: user?.userid || null,
-        last_updated_date: formData.lastUpdatedDate || null,
-        manual_dc_no: formData.manualDcNo || null,
-        entry_type: "SALE",
-        slip_out_time: slipOutTime,
-        status: onlineMode ? "ONLINE" : "OFFLINE",
-        slip_date: formData.slipDate || null,
-        vehicle_no: finalVehicleNo, 
-         gross_wbd: (parseFloat(formData.grossWeight) || 0) + (parseFloat(formData.bardanaWeight) || 0),
-      supplier_weight: formData.supplierWeight ? parseFloat(formData.supplierWeight) : null,
-        exc_bags: formData.excBags ? 1 : 0,
-        bardana_bag: formData.excBags ? 'Y' : 'N', 
-        // Sale module mein - reg_type column mein save hoga
-reg_type: formData.reg_type === "REGISTER" ? "REGISTER" : 
-           formData.reg_type === "UNREGISTER" ? "UNREGISTER" : "Null",
-        
-      };
+  created_by: user?.userid || null,
+  creation_date: formData.creationDate || null,
+  last_updated_by: user?.userid || null,
+  last_updated_date: formData.lastUpdatedDate || null,
+  manual_dc_no: formData.manualDcNo || null,
+  entry_type: "SALE",
+  slip_out_time: slipOutTime,
+  status: onlineMode ? "ONLINE" : "OFFLINE",
+  slip_date: formData.slipDate || null,
+  vehicle_no: finalVehicleNo,
+  
+  // ✅ FIX: Use masterBardanaWeight for gross_wbd calculation
+  gross_wbd: (parseFloat(formData.grossWeight) || 0) + (parseFloat(formData.masterBardanaWeight) || 0),
+  
+  supplier_weight: formData.supplierWeight ? parseFloat(formData.supplierWeight) : null,
+  exc_bags: formData.excBags ? 1 : 0,
+  bardana_bag: formData.excBags ? 'Y' : 'N',
+  
+  // Sale module mein - reg_type column mein save hoga
+  reg_type: formData.reg_type === "R" ? "R" : 
+             formData.reg_type === "U" ? "U" : "Null",
+};
+
+console.log("🔍 DEBUG - Master Payload:", {
+  bardana_weight: masterPayload.bardana_weight,
+  gross_wbd: masterPayload.gross_wbd,
+  grossWeight: formData.grossWeight,
+  masterBardanaWeight: formData.masterBardanaWeight,
+});
 
 
     
@@ -3500,7 +3863,7 @@ setTimeout(async () => {
   } catch (err) {
     console.error("Error fetching slip for auto-print:", err);
   }
-}, 1000); // 1 second delay
+}, 2000); // 2 second delay
 
 
     // Save sales detail records for each non-empty row (for both create and update)
@@ -3658,7 +4021,7 @@ console.log("📤 Sales Item Payload Bardana Fields:", {
           console.log("✅ Sale DB data fetched successfully:", dbData);
 
           const IGP_API_URL =
-            "http://portal.sabirsgroup.com:8184/ords/sabroso_ords/wb/wb-update-on-igp";
+            "http://portal.sabirsgroup.com:8184/ords/sabroso_ords/wb-om/wb-update-on-igp";
 
           console.log("🌐 Sending SALE IGP payload to API:", IGP_API_URL);
 
@@ -3947,7 +4310,7 @@ const navigateToPrev = async () => {
   let recordFound = false;
 
   // ✅ Get current reg_type from formData (REGISTER/UNREGISTER)
-  const regType = formData.reg_type || 'REGISTER';
+  const regType = formData.reg_type || 'R';
   const entryType = formData.entryType || 'SALE';
 
   console.log(`🔍 Searching previous ${entryType} slip for ${regType}...`);
@@ -3990,7 +4353,7 @@ const navigateToNext = async () => {
   let recordFound = false;
 
   // ✅ Get current reg_type from formData (REGISTER/UNREGISTER)
-  const regType = formData.reg_type || 'REGISTER';
+  const regType = formData.reg_type || 'R';
   const entryType = formData.entryType || 'SALE';
 
   console.log(`🔍 Searching next ${entryType} slip for ${regType}...`);
@@ -4629,15 +4992,19 @@ className="border-r border-gray-400 p-1 text-center text-blue-600 truncate w-ful
           <div className="flex gap-5">
   <Button
     type="button"
-    className="bg-green-600 hover:bg-green-700 h-10 w-40 px-4 text-sm text-white font-medium"
+    className={`bg-green-600 hover:bg-green-700 h-10 w-40 px-4 text-sm text-white font-medium ${
+        (loading || disableSaveButton || (onlineMode && !hasDcNoInSalesData))
+            ? "opacity-50 cursor-not-allowed"
+            : ""
+    }`}
     onClick={() => {
-      console.log("🟢 Save button clicked");
-      handleSave();
+        console.log("🟢 Save button clicked");
+        handleSave();
     }}
-    disabled={loading || disableSaveButton}
-  >
+    disabled={loading || disableSaveButton || (onlineMode && !hasDcNoInSalesData)}
+>
     {loading ? "Saving..." : "Save"}
-  </Button>
+</Button>
 
   <Button
     className="h-8 px-1 text-sm bg-orange-600 hover:bg-orange-700 text-white font-medium"
@@ -4820,7 +5187,7 @@ className="border-r border-gray-400 p-1 text-center text-blue-600 truncate w-ful
                 }
 
                 const response = await fetch(
-                  "http://portal.sabirsgroup.com:8184/ords/sabroso_ords/wb/wb-update-on-igp",
+                  "http://portal.sabirsgroup.com:8184/ords/sabroso_ords/wb-om/wb-update-on-igp",
                   {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -4944,6 +5311,7 @@ className="border-r border-gray-400 p-1 text-center text-blue-600 truncate w-ful
           name="firstWeight"
           value={formData.firstWeight}
           onChange={handleChange}
+          readOnly
           className={`h-7 text-xs flex-1 max-w-32 text-black 
             !border !border-gray-400 rounded px-1 
             focus:!border-black
@@ -4959,6 +5327,7 @@ className="border-r border-gray-400 p-1 text-center text-blue-600 truncate w-ful
           name="secondWeight"
           value={formData.secondWeight}
           onChange={handleChange}
+         readOnly
           className={`h-7 text-xs flex-1 max-w-32 text-black 
             !border !border-gray-400 rounded px-1 
             focus:!border-black
@@ -5017,9 +5386,9 @@ className="border-r border-gray-400 p-1 text-center text-blue-600 truncate w-ful
      {/* Reg Type */}
 <div className="flex items-center gap-1">
   <Label className="text-xs text-black w-20">Reg Type</Label>
-<select
+  <select
     name="reg_type"  
-    value={formData.reg_type || 'REGISTER'}
+    value={formData.reg_type || 'N'}
     onChange={(e) => {
         const value = e.target.value;
         console.log(`🔄 Reg Type changed to: "${value}"`);
@@ -5035,17 +5404,17 @@ className="border-r border-gray-400 p-1 text-center text-blue-600 truncate w-ful
         !border !border-gray-400 rounded px-1 
         focus:!border-black bg-white"
     disabled={
-        formData.purchase && 
-        formData.purchase !== 'NULL' && 
-        formData.purchase !== 'Null'
+        isEditMode ||  // ✅ Edit mode mein disable
+        (formData.purchase && 
+         formData.purchase !== 'NULL' && 
+         formData.purchase !== 'Null')
     }
->
-    <option value="REGISTER">REGISTER</option>
-    <option value="UNREGISTER">UNREGISTER</option>
-
-</select>
+  >
+    <option value="N">NULL</option>
+    <option value="R">REGISTER</option>
+    <option value="U">UNREGISTER</option>
+  </select>
 </div>
-
       {/* purchase Title & Exc.Bags */}
      <div className="flex items-center gap-1">
    <Label className="text-xs text-black w-20">Purchase</Label>
@@ -5071,8 +5440,8 @@ className="border-r border-gray-400 p-1 text-center text-blue-600 truncate w-ful
     }
     >
      
-      <option value="REGISTER">REGISTER</option>
-      <option value="UNREGISTER">UNREGISTER</option>
+      <option value="R">REGISTER</option>
+      <option value="U">UNREGISTER</option>
       
     </select>
   
@@ -5169,26 +5538,34 @@ className="border-r border-gray-400 p-1 text-center text-blue-600 truncate w-ful
       <div className="flex flex-col gap-1 mt-1">
         {/* First & Second Weight Buttons */}
         <div className="grid grid-cols-2 gap-1">
-          <Button
-            className={`h-7 text-xs ${
-              formData.isFirstWeightSaved ? "bg-gray-400 cursor-not-allowed" : "bg-green-600 hover:bg-green-700"
-            }`}
-            onClick={captureFirstWeight}
-            disabled={formData.isFirstWeightSaved}
-          >
-            1st WHT
-          </Button>
-
-          <Button
-            className={`h-7 text-xs ${
-              (!isEditMode && !formData.isFirstWeightSaved) || formData.isSecondWeightSaved
-                ? "bg-gray-400 cursor-not-allowed"
-                : "bg-green-600 hover:bg-green-700"
-            }`}
-            onClick={captureSecondWeight}
-          >
-            2nd WHT
-          </Button>
+         <Button
+    className={`h-7 text-xs ${
+        formData.isFirstWeightSaved || isRegTypeNull()
+            ? "bg-gray-400 cursor-not-allowed"
+            : "bg-green-600 hover:bg-green-700"
+    }`}
+    onClick={captureFirstWeight}
+    disabled={formData.isFirstWeightSaved || isRegTypeNull()}
+>
+    1st WHT
+</Button>
+         <Button
+    className={`h-7 text-xs ${
+        formData.isSecondWeightSaved || 
+        (isEditMode && formData.secondWeight && parseFloat(formData.secondWeight) > 0) ||
+        (!isEditMode && !formData.isFirstWeightSaved)
+            ? "bg-gray-400 cursor-not-allowed"
+            : "bg-green-600 hover:bg-green-700"
+    }`}
+    onClick={captureSecondWeight}
+    disabled={
+        formData.isSecondWeightSaved || 
+        (isEditMode && formData.secondWeight && parseFloat(formData.secondWeight) > 0) ||
+        (!isEditMode && !formData.isFirstWeightSaved)
+    }
+>
+    2nd WHT
+</Button>
         </div>
 
         {/* Camera Feed */}
@@ -5839,42 +6216,84 @@ className="border-r border-gray-400 p-1 text-center text-blue-600 truncate w-ful
         </div>
 
         {/* DC Qty - After Item Description */}
-        <div className="bg-white border border-gray-300 p-1">
-          <input
-            type="text"
-            className="w-full h-6 text-xs text-black px-2 border-none bg-transparent focus:outline-none text-right"
-            value={salesData[index]?.dcQty || ""}
-            onChange={(e) => {
-              const newData = [...salesData];
-              newData[index] = {
-                ...newData[index],
-                dcQty: e.target.value,
-              };
-              setSalesData(newData);
-            }}
-            autoComplete="off"
-          />
-        </div>
+       <div className="bg-white border border-gray-300 p-1">
+  <input
+    type="text"
+    className="w-full h-6 text-xs text-black px-2 border-none bg-transparent focus:outline-none text-right"
+    value={salesData[index]?.dcQty || ""}
+  onChange={(e) => {
+  const newData = [...salesData];
+
+  const dcQty = parseFloat(e.target.value || "0");
+  const wtPerBag = parseFloat(newData[index]?.wtPerBag || "0");
+
+  const bardanaWeight = dcQty * wtPerBag;
+
+  newData[index] = {
+    ...newData[index],
+    dcQty: e.target.value,
+    bardanaWeight: isNaN(bardanaWeight)
+      ? ""
+      : bardanaWeight.toString(),
+  };
+console.log("DC Qty:", dcQty);
+console.log("WPB:", wtPerBag);
+console.log("Bardana Weight:", bardanaWeight);
+
+  setSalesData(newData);
+  setFormData((prev) => ({
+  ...prev,
+  masterBardanaWeight: bardanaWeight.toString(),
+}));
+}}
+
+    autoComplete="off"
+
+    
+  />
+
+  
+</div>
 
         {/* Bardana Type */}
         <div className="bg-white border border-gray-300 p-1">
           <Select
             value={salesData[index]?.bardanaType || ""}
-            onValueChange={(value) => {
-              const selectedBardana = bardanaTypes.find(
-                (item) => item.type === value
-              );
-              const newData = [...salesData];
-              newData[index] = {
-                ...newData[index],
-                bardanaType: value,
-                bardanaTypeId: selectedBardana?.data_config_id || null,
-                wtPerBag: selectedBardana?.data_config_segment1 || newData[index]?.wtPerBag || "",
-              };
-              setSalesData(newData);
-              setBardanaSelectOpen(false);
-              setBardanaSelectedRow(null);
-            }}
+          onValueChange={(value) => {
+  const selectedBardana = bardanaTypes.find(
+    (item) => item.type === value
+  );
+
+  const newData = [...salesData];
+
+  const dcQty = parseFloat(newData[index]?.dcQty || "0");
+  const wtPerBag = parseFloat(
+    selectedBardana?.data_config_segment1 || "0"
+  );
+
+  const bardanaWeight = dcQty * wtPerBag;
+
+  newData[index] = {
+    ...newData[index],
+    bardanaType: value,
+    bardanaTypeId: selectedBardana?.data_config_id || null,
+    wtPerBag: selectedBardana?.data_config_segment1 || "",
+    bardanaWeight: bardanaWeight.toString(),
+  };
+
+  console.log("DC Qty:", dcQty);
+  console.log("WPB:", wtPerBag);
+  console.log("Bardana Weight:", bardanaWeight);
+
+  setSalesData(newData);
+
+  setFormData((prev) => ({
+  ...prev,
+  masterBardanaWeight: bardanaWeight.toString(),
+}));
+  setBardanaSelectOpen(false);
+  setBardanaSelectedRow(null);
+}}
             open={bardanaSelectOpen && bardanaSelectedRow === index}
             onOpenChange={(open) => {
               setBardanaSelectOpen(open);
@@ -5949,41 +6368,50 @@ className="border-r border-gray-400 p-1 text-center text-blue-600 truncate w-ful
         </div>
      
         {/* WPB - Weight Per Bags */}
-        <div className="bg-white border border-gray-300 p-1">
-          <input
-            type="text"
-            className="w-full h-6 text-xs text-black px-2 border-none bg-transparent focus:outline-none text-right"
-            value={salesData[index]?.wtPerBag || ""}
-            onChange={(e) => {
-              const newData = [...salesData];
-              newData[index] = {
-                ...newData[index],
-                wtPerBag: e.target.value,
-              };
-              setSalesData(newData);
-            }}
-            autoComplete="off"
-          />
-        </div>
+       <div className="bg-white border border-gray-300 p-1">
+  <input
+    type="text"
+    className="w-full h-6 text-xs text-black px-2 border-none bg-transparent focus:outline-none text-right"
+    value={salesData[index]?.wtPerBag || ""}
+   onChange={(e) => {
+  const newData = [...salesData];
 
+  const wtPerBag = parseFloat(e.target.value || "0");
+  const dcQty = parseFloat(newData[index]?.dcQty || "0");
+
+  const bardanaWeight = dcQty * wtPerBag;
+
+  newData[index] = {
+    ...newData[index],
+    wtPerBag: e.target.value,
+    bardanaWeight: isNaN(bardanaWeight)
+      ? ""
+      : bardanaWeight.toString(),
+  };
+
+  setSalesData(newData);
+  setFormData((prev) => ({
+  ...prev,
+  masterBardanaWeight: bardanaWeight.toString(),
+}));
+}}
+    autoComplete="off"
+  />
+</div>
         {/* Bardana Weight */}
-        <div className="bg-white border border-gray-300 p-1">
-          <input
-            type="text"
-            className="w-full h-6 text-xs text-black px-2 border-none bg-transparent focus:outline-none text-right"
-            value={salesData[index]?.bardanaWeight || ""}
-            onChange={(e) => {
-              const newData = [...salesData];
-              newData[index] = {
-                ...newData[index],
-                bardanaWeight: e.target.value,
-              };
-              setSalesData(newData);
-            }}
-            autoComplete="off"
-          />
-        </div>
-
+   <div className="bg-white border border-gray-300 p-1">
+  <input
+    type="text"
+    className="w-full h-6 text-xs text-black px-2 border-none bg-transparent focus:outline-none text-right"
+    value={
+      salesData[index]?.bardanaWeight
+        ? Math.round(parseFloat(salesData[index].bardanaWeight))
+        : ""
+    }
+    readOnly
+    autoComplete="off"
+  />
+</div>
         {/* Branch - Read-only from master */}
         <div className="bg-white border border-gray-300 p-1">
           <input

@@ -272,7 +272,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/weight/status', (req, res) => {
     res.json({
       connected: isPortConnected,
-      port: 'COM4', // Direct assignment to ensure COM4 is returned
+      port: 'COM1', // Direct assignment to ensure COM1 is returned
       baudRate: currentBaudRate,
       currentWeight,
       currentUnit

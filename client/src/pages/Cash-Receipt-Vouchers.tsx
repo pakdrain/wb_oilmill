@@ -3549,7 +3549,7 @@ const handleOnline = async () => {
     console.log("🚀 Complete IGP Payload being sent:", JSON.stringify(igpPayload, null, 2));
 
     const igpResp = await fetch(
-      "http://portal.sabirsgroup.com:8184/ords/sabroso_ords/wb/manual-vouchers",
+      "http://portal.sabirsgroup.com:8184/ords/sabroso_ords/wb-om/manual-vouchers",
       {
         method: "POST",
         headers: {

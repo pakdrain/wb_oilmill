@@ -1087,7 +1087,7 @@ function formatPKTDateTime(dateStr: string | Date | null | undefined): string {
   const fiscalYear = getFiscalYear(record.slip_in_time || record.createdAt);
   
   // ✅ Get purRegType from record
-  const purRegType = record.pur_reg_type || record.purRegType || record.purchase || 'REGISTER';
+  const purRegType = record.pur_reg_type || record.purRegType || record.purchase || 'R';
 
   const firstWeight = weightType === "first" ? record.first_weight : "";
   const secondWeight = weightType === "second" ? record.second_weight : "";
@@ -1616,7 +1616,7 @@ const generateNewReportHTML = (data : any) => {
   const fiscalYear = getFiscalYear(record.slip_in_time || record.createdAt);
   
   // ✅ Get purRegType from record
-  const purRegType = record.pur_reg_type || record.purRegType || record.purchase || 'REGISTER';
+  const purRegType = record.pur_reg_type || record.purRegType || record.purchase || 'R';
 
   const salesData = data.details || [];
   const nonEmptyRows = salesData.filter(
@@ -2701,7 +2701,7 @@ const currentTime = new Date()
     const fiscalYear = getFiscalYear(record.slip_in_time || record.createdAt);
     
     // ✅ Get purRegType from record
-    const purRegType = record.pur_reg_type || record.purRegType || record.purchase || 'REGISTER';
+    const purRegType = record.pur_reg_type || record.purRegType || record.purchase || 'R';
 
     // ✅ Debug logs to verify data
     console.log("✅ Weight By Name (created_by_name):", record.created_by_name);
@@ -2881,7 +2881,7 @@ const currentTime = new Date()
         <div class="copy-label">Head Office Copy</div>
         <div class="print-date">Print Date: ${currentDate} ${currentTime}</div>
       </div>
-      <div class="company-name">MULTAN FEEDS (PVT)LTD</div>
+      <div class="company-name">Sabirs Vegetable Oils (Pvt.) Ltd.</div>
       <div style="height: 6px;"></div>
       <div class="slip-title">WEIGHBRIDGE SLIP</div>
       <div><b>IGP #</b> &nbsp;&nbsp;&nbsp;<span class="value" style="font-weight: bold; font-size: 20px;">${record.igp_no || ""}</span></div>
@@ -2971,7 +2971,7 @@ const currentTime = new Date()
         <div class="slip-header">
           <div class="header-left">Feed Mill Copy</div>
           <div class="header-center">
-            <div class="company-name">MULTAN FEEDS (PVT)LTD</div>
+            <div class="company-name">Sabirs Vegetable Oils (Pvt.) Ltd.</div>
             <div style="height: 6px;"></div>
             <div class="slip-title">WEIGHBRIDGE SLIP</div>
           </div>
@@ -3064,7 +3064,7 @@ const currentTime = new Date()
           <div class="slip-header">
             <div class="header-left">Customer Copy</div>
             <div class="header-center">
-              <div class="company-name">MULTAN FEEDS (PVT)LTD</div>
+              <div class="company-name">Sabirs Vegetable Oils (Pvt.) Ltd.</div>
               <div style="height: 6px;"></div>
               <div class="slip-title">WEIGHBRIDGE SLIP</div>
             </div>

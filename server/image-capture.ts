@@ -28,6 +28,24 @@ export class ImageCaptureService {
     await fs.mkdir(secondWeightPath, { recursive: true });
   }
 
+  // ✅ Helper function to determine which reg type to use
+  private getRegTypeToUse(entryType: string, purRegType: string, regType: string): string {
+    const cleanEntryType = String(entryType).trim().toUpperCase();
+    const cleanPurRegType = String(purRegType).trim().toUpperCase();
+    const cleanRegType = String(regType).trim().toUpperCase();
+    
+    // For PURCHASE and PURCHASE_RETURN, use purRegType
+    if (cleanEntryType === 'PURCHASE' || cleanEntryType === 'PURCHASE_RETURN') {
+      return cleanPurRegType || 'R'; // Default to 'R' if not provided
+    }
+    // For SALE and SALE_RETURN, use regType
+    else if (cleanEntryType === 'SALE' || cleanEntryType === 'SALE_RETURN') {
+      return cleanRegType || 'R'; // Default to 'R' if not provided
+    }
+    // Default case
+    return cleanRegType || cleanPurRegType || 'R';
+  }
+
   // ✅ Capture First Weight Image
   async captureFirstWeightImage(options: CaptureImageOptions): Promise<string> {
     const {
@@ -37,8 +55,8 @@ export class ImageCaptureService {
       username = 'admin',
       password = 'admin123',
       entryType = 'PURCHASE',
-      purRegType = 'REGISTER',
-      regType = 'REGISTER'
+      purRegType = 'R',
+      regType = 'R'
     } = options;
 
     await this.ensureDirectoriesExist();
@@ -46,10 +64,8 @@ export class ImageCaptureService {
     const cleanSlipNo = String(slipNo).trim();
     const cleanEntryType = String(entryType).trim().toUpperCase();
     
-    // ✅ Determine which reg type to use based on entry type
-    const isPurchase = cleanEntryType === 'PURCHASE' || cleanEntryType === 'PURCHASE_RETURN';
-    const regTypeValue = isPurchase ? purRegType : regType;
-    const cleanRegType = String(regTypeValue).trim().toUpperCase();
+    // ✅ Determine which reg type to use
+    const cleanRegType = this.getRegTypeToUse(cleanEntryType, purRegType, regType);
 
     const firstWeightPath = path.join(this.baseImagePath, this.firstWeightFolder);
 
@@ -57,8 +73,7 @@ export class ImageCaptureService {
     const currentMonth = now.getMonth() + 1;
     const fiscalYear = currentMonth >= 7 ? now.getFullYear() + 1 : now.getFullYear();
 
-    // ✅ Filename: slip_1001_SALE_UNREGISTER_2027.jpg
-    // ✅ For PURCHASE: slip_1001_PURCHASE_UNREGISTER_2027.jpg
+    // ✅ Filename: slip_1001_SALE_R_2027.jpg or slip_1001_PURCHASE_R_2027.jpg
     const filename = `slip_${cleanSlipNo}_${cleanEntryType}_${cleanRegType}_${fiscalYear}.jpg`;
     const imagePath = path.join(firstWeightPath, filename);
 
@@ -85,8 +100,8 @@ export class ImageCaptureService {
       username = 'admin',
       password = 'admin123',
       entryType = 'PURCHASE',
-      purRegType = 'REGISTER',
-      regType = 'REGISTER'
+      purRegType = 'R',
+      regType = 'R'
     } = options;
 
     await this.ensureDirectoriesExist();
@@ -94,10 +109,8 @@ export class ImageCaptureService {
     const cleanSlipNo = String(slipNo).trim();
     const cleanEntryType = String(entryType).trim().toUpperCase();
     
-    // ✅ Determine which reg type to use based on entry type
-    const isPurchase = cleanEntryType === 'PURCHASE' || cleanEntryType === 'PURCHASE_RETURN';
-    const regTypeValue = isPurchase ? purRegType : regType;
-    const cleanRegType = String(regTypeValue).trim().toUpperCase();
+    // ✅ Determine which reg type to use
+    const cleanRegType = this.getRegTypeToUse(cleanEntryType, purRegType, regType);
 
     const secondWeightPath = path.join(this.baseImagePath, this.secondWeightFolder);
 
@@ -105,8 +118,7 @@ export class ImageCaptureService {
     const currentMonth = now.getMonth() + 1;
     const fiscalYear = currentMonth >= 7 ? now.getFullYear() + 1 : now.getFullYear();
 
-    // ✅ Filename: slip_1001_SALE_UNREGISTER_2027.jpg
-    // ✅ For PURCHASE: slip_1001_PURCHASE_UNREGISTER_2027.jpg
+    // ✅ Filename: slip_1001_SALE_R_2027.jpg or slip_1001_PURCHASE_R_2027.jpg
     const filename = `slip_${cleanSlipNo}_${cleanEntryType}_${cleanRegType}_${fiscalYear}.jpg`;
     const imagePath = path.join(secondWeightPath, filename);
 
@@ -154,7 +166,7 @@ export class ImageCaptureService {
     entryType?: string, 
     slipNo?: string, 
     fiscalYear?: number,
-    regType?: string  // ✅ This will be either pur_reg_type or reg_type from database
+    regType?: string  // This will be either 'R' or 'U'
   ): Promise<string[]> {
     const folderPath = path.join(this.baseImagePath, this.firstWeightFolder);
 
@@ -171,18 +183,31 @@ export class ImageCaptureService {
 
       const filtered = files
         .filter(file => /\.(jpg|jpeg)$/i.test(file))
-        .filter(file => (!entryType || file.includes(`_${entryType.toUpperCase()}_`)))
-        .filter(file => (!slipNo || file.includes(`slip_${slipNo}_`)))
+        .filter(file => {
+          if (!entryType) return true;
+          // ✅ Check for entryType in filename (case insensitive)
+          return file.toUpperCase().includes(`_${entryType.toUpperCase()}_`);
+        })
+        .filter(file => {
+          if (!slipNo) return true;
+          return file.includes(`slip_${slipNo}_`);
+        })
         .filter(file => {
           if (!fiscalYear) return true;
+          // ✅ Extract fiscal year from filename
           const parts = file.split('_');
           const yearPart = parts[parts.length - 1].replace('.jpg', '').replace('.jpeg', '');
           return yearPart === String(fiscalYear);
         })
         .filter(file => {
           if (!regType) return true;
-          // ✅ Filter by reg_type (REGISTER or UNREGISTER)
-          return file.includes(`_${regType.toUpperCase()}_`);
+          // ✅ Filter by regType (R or U) - check the 4th part of filename
+          const parts = file.split('_');
+          if (parts.length >= 4) {
+            const fileRegType = parts[3]; // slip_123_SALE_R_2027.jpg -> parts[3] = 'R'
+            return fileRegType.toUpperCase() === regType.toUpperCase();
+          }
+          return false;
         })
         .sort()
         .reverse();
@@ -201,7 +226,7 @@ export class ImageCaptureService {
     entryType?: string, 
     slipNo?: string, 
     fiscalYear?: number,
-    regType?: string  // ✅ This will be either pur_reg_type or reg_type from database
+    regType?: string  // This will be either 'R' or 'U'
   ): Promise<string[]> {
     const folderPath = path.join(this.baseImagePath, this.secondWeightFolder);
 
@@ -218,18 +243,31 @@ export class ImageCaptureService {
 
       const filtered = files
         .filter(file => /\.(jpg|jpeg)$/i.test(file))
-        .filter(file => (!entryType || file.includes(`_${entryType.toUpperCase()}_`)))
-        .filter(file => (!slipNo || file.includes(`slip_${slipNo}_`)))
+        .filter(file => {
+          if (!entryType) return true;
+          // ✅ Check for entryType in filename (case insensitive)
+          return file.toUpperCase().includes(`_${entryType.toUpperCase()}_`);
+        })
+        .filter(file => {
+          if (!slipNo) return true;
+          return file.includes(`slip_${slipNo}_`);
+        })
         .filter(file => {
           if (!fiscalYear) return true;
+          // ✅ Extract fiscal year from filename
           const parts = file.split('_');
           const yearPart = parts[parts.length - 1].replace('.jpg', '').replace('.jpeg', '');
           return yearPart === String(fiscalYear);
         })
         .filter(file => {
           if (!regType) return true;
-          // ✅ Filter by reg_type (REGISTER or UNREGISTER)
-          return file.includes(`_${regType.toUpperCase()}_`);
+          // ✅ Filter by regType (R or U) - check the 4th part of filename
+          const parts = file.split('_');
+          if (parts.length >= 4) {
+            const fileRegType = parts[3]; // slip_123_SALE_R_2027.jpg -> parts[3] = 'R'
+            return fileRegType.toUpperCase() === regType.toUpperCase();
+          }
+          return false;
         })
         .sort()
         .reverse();
@@ -243,77 +281,62 @@ export class ImageCaptureService {
     }
   }
 
-
   // ✅ Get latest first weight image
-async getLatestFirstWeightImage(
-  slipNo: string,
-  entryType?: string,
-  fiscalYear?: number,
-  regType?: string
-): Promise<string | null> {
+  async getLatestFirstWeightImage(
+    slipNo: string,
+    entryType?: string,
+    fiscalYear?: number,
+    regType?: string  // This will be either 'R' or 'U'
+  ): Promise<string | null> {
+    console.log("🔍 getLatestFirstWeightImage:", {
+      slipNo,
+      entryType,
+      fiscalYear,
+      regType
+    });
 
-  console.log("🔍 getLatestFirstWeightImage:", {
-    slipNo,
-    entryType,
-    fiscalYear,
-    regType
-  });
+    // ✅ FIX: Remove the SALE UNREGISTER blocking logic - this should be handled in API layer
+    // The service should just filter by regType
 
-  // ✅ Never show image for SALE UNREGISTER
-  if (
-    entryType?.toUpperCase() === "SALE" &&
-    regType?.toUpperCase() === "UNREGISTER"
-  ) {
-    console.log("🚫 SALE UNREGISTER - First weight image not allowed");
-    return null;
+    const images = await this.getFirstWeightImages(
+      entryType,
+      slipNo,
+      fiscalYear,
+      regType
+    );
+
+    console.log(`📸 Found ${images.length} matching first weight images:`, images);
+
+    return images.length > 0 ? images[0] : null;
   }
 
-  const images = await this.getFirstWeightImages(
-    entryType,
-    slipNo,
-    fiscalYear,
-    regType
-  );
+  // ✅ Get latest second weight image
+  async getLatestSecondWeightImage(
+    slipNo: string,
+    entryType?: string,
+    fiscalYear?: number,
+    regType?: string  // This will be either 'R' or 'U'
+  ): Promise<string | null> {
+    console.log("🔍 getLatestSecondWeightImage:", {
+      slipNo,
+      entryType,
+      fiscalYear,
+      regType
+    });
 
-  console.log("📸 Matching first weight images:", images);
+    // ✅ FIX: Remove the SALE UNREGISTER blocking logic - this should be handled in API layer
 
-  return images.length > 0 ? images[0] : null;
-}
-// ✅ Get latest second weight image
-async getLatestSecondWeightImage(
-  slipNo: string,
-  entryType?: string,
-  fiscalYear?: number,
-  regType?: string
-): Promise<string | null> {
+    const images = await this.getSecondWeightImages(
+      entryType,
+      slipNo,
+      fiscalYear,
+      regType
+    );
 
-  console.log("🔍 getLatestSecondWeightImage:", {
-    slipNo,
-    entryType,
-    fiscalYear,
-    regType
-  });
+    console.log(`📸 Found ${images.length} matching second weight images:`, images);
 
-  // ✅ Never show image for SALE UNREGISTER
-  if (
-    entryType?.toUpperCase() === "SALE" &&
-    regType?.toUpperCase() === "UNREGISTER"
-  ) {
-    console.log("🚫 SALE UNREGISTER - Second weight image not allowed");
-    return null;
+    return images.length > 0 ? images[0] : null;
   }
-
-  const images = await this.getSecondWeightImages(
-    entryType,
-    slipNo,
-    fiscalYear,
-    regType
-  );
-
-  console.log("📸 Matching second weight images:", images);
-
-  return images.length > 0 ? images[0] : null;
-}
 
   getCurrentFiscalYear(): number {
     const now = new Date();

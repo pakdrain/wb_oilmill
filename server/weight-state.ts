@@ -2,12 +2,12 @@
 export let currentWeight = "0.00";
 export let currentUnit = "kg";
 export let isPortConnected = false;
-export let currentComPort: string = "COM4";
+export let currentComPort: string = "COM1";
 export let currentBaudRate: number = 9600;
 
-// ✅ Initialize state with env (fallback to COM4/9600)
+// ✅ Initialize state with env (fallback to COM1/9600)
 export function initializeWeightState() {
-  currentComPort = process.env.DEFAULT_COM_PORT || "COM4";
+  currentComPort = process.env.DEFAULT_COM_PORT || "COM1";
   currentBaudRate = parseInt(process.env.DEFAULT_BAUD_RATE || "9600", 10);
 }
 
@@ -25,7 +25,7 @@ export function updateConnectionStatus(connected: boolean) {
 }
 
 export function updateComPort(port: string) {
-  currentComPort = port || "COM4";
+  currentComPort = port || "COM1";
   console.log("🔄 COM port updated:", currentComPort);
 }
 
@@ -43,15 +43,15 @@ export function updateBaudRate(rate: number) {
 // export let currentWeight = "0.00";
 // export let currentUnit = "kg";
 // export let isPortConnected = false;
-// export let currentComPort: string = "COM4";
+// export let currentComPort: string = "COM1";
 // export let currentBaudRate: number = 9600;
 
 // // Buffer for incomplete serial data
 // let dataBuffer: string = "";
 
-// // ✅ Initialize state with env (fallback to COM4/9600)
+// // ✅ Initialize state with env (fallback to COM1/9600)
 // export function initializeWeightState() {
-//   currentComPort = process.env.DEFAULT_COM_PORT || "COM4";
+//   currentComPort = process.env.DEFAULT_COM_PORT || "COM1";
 //   currentBaudRate = parseInt(process.env.DEFAULT_BAUD_RATE || "9600", 10);
 // }
 
@@ -267,7 +267,7 @@ export function updateBaudRate(rate: number) {
 // }
 
 // export function updateComPort(port: string) {
-//   currentComPort = port || "COM4";
+//   currentComPort = port || "COM1";
 //   console.log("🔄 COM port updated:", currentComPort);
 // }
 

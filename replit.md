@@ -67,7 +67,7 @@ This is a comprehensive weighbridge monitoring system that combines CCTV camera 
 5. Stream statistics are collected and stored in database
 
 ### Weight Data Flow
-1. Weight scale connects via serial port (COM4 default)
+1. Weight scale connects via serial port (COM1 default)
 2. Serial data is parsed and validated
 3. Weight values are broadcast via WebSocket to connected clients
 4. First and second weight measurements are captured for net weight calculation

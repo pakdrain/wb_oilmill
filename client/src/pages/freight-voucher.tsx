@@ -541,7 +541,7 @@ const handleApprove = async () => {
       console.log("📤 Sending approved data to IGP:", voucherData);
 
       const igpResponse = await fetch(
-        "http://portal.sabirsgroup.com:8184/ords/sabroso_ords/wb/freight",
+        "http://portal.sabirsgroup.com:8184/ords/sabroso_ords/wb-om/freight",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -1447,7 +1447,7 @@ const handlePrint = async () => {
 </head>
 <body>
 
-<h2 style="text-align:center;">MULTAN FEEDS (PVT.) LTD.</h2>
+<h2 style="text-align:center;">Sabirs Vegetable Oils (Pvt.) Ltd.</h2>
 <h3 style="text-align:center;text-decoration:underline;">FREIGHT VOUCHER</h3>
 
 <p><strong>Voucher #:</strong>_______</p>

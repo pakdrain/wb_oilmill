@@ -511,7 +511,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/weight/status', (req, res) => {
     res.json({
       connected: isPortConnected,
-      port: 'COM4', // Direct assignment to ensure COM4 is returned
+      port: 'COM1', // Direct assignment to ensure COM1 is returned
       baudRate: currentBaudRate,
       currentWeight,
       currentUnit
@@ -1534,7 +1534,7 @@ app.get('/api/sales', async (req: Request, res: Response) => {
       if (result.rows.length === 0) {
         return res.json({
           id: 1,
-          port: 'COM4',
+          port: 'COM1',
           baudRate: 9600,
           dataBits: 8,
           stopBits: 1,

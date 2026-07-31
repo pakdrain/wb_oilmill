@@ -66,7 +66,7 @@ export function ConfigProvider({ children }: { children: React.ReactNode }) {
   }, [refetchConfig]);
 
   const value: ConfigContextType = {
-    comPort: comPort || "COM4", // ✅ Context + fallback
+    comPort: comPort || "COM1", // ✅ Context + fallback
     cameraIp,
     cameraPort,
     isLoading,

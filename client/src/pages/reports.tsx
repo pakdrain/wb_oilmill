@@ -1357,7 +1357,7 @@ const generateSalesReportHTML = (data: any, weightType: "first" | "second") => {
 
   const entryTypeUpper = (record.entry_type || "SALE").toUpperCase();
   const fiscalYear = getFiscalYear(record.slip_in_time || record.createdAt);
-  const regType = record.reg_type || record.regType || 'REGISTER';
+  const regType = record.reg_type || record.regType || 'R';
 
   const firstWeight = weightType === "first" ? record.first_weight : "";
   const secondWeight = weightType === "second" ? record.second_weight : "";
@@ -1877,7 +1877,7 @@ const generateNewReportHTML = (data: any) => {
 
   const entryTypeUpper = (record.entry_type || "SALE").toUpperCase();
   const fiscalYear = getFiscalYear(record.slip_in_time || record.createdAt);
-  const regType = record.reg_type || record.regType || 'REGISTER';
+  const regType = record.reg_type || record.regType || 'R';
 
   const salesData = data.details || [];
   const nonEmptyRows = salesData.filter(
@@ -2585,7 +2585,7 @@ const currentTime = new Date()
         <div class="copy-label">Head Office Copy</div>
         <div class="print-date">Print Date: ${currentDate} ${currentTime}</div>
       </div>
-      <div class="company-name">MULTAN FEEDS (PVT)LTD</div>
+      <div class="company-name">Sabirs Vegetable Oils (Pvt.) Ltd.</div>
       <div style="height: 6px;"></div>
       <div class="slip-title">WEIGHBRIDGE SLIP</div>
        <div class="sold-note">Sold Note</div>
@@ -2656,7 +2656,7 @@ const currentTime = new Date()
         <div class="slip-header">
           <div class="header-left">Feed Mill Copy</div>
           <div class="header-center">
-            <div class="company-name">MULTAN FEEDS (PVT)LTD</div>
+            <div class="company-name">Sabirs Vegetable Oils (Pvt.) Ltd.</div>
             <div style="height: 6px;"></div>
             <div class="slip-title">WEIGHBRIDGE SLIP</div>
             <div class="sold-note">Sold Note</div>
@@ -2730,7 +2730,7 @@ const currentTime = new Date()
           <div class="slip-header">
             <div class="header-left">Customer Copy</div>
             <div class="header-center">
-              <div class="company-name">MULTAN FEEDS (PVT)LTD</div>
+              <div class="company-name">Sabirs Vegetable Oils (Pvt.) Ltd.</div>
               <div style="height: 6px;"></div>
               <div class="slip-title">WEIGHBRIDGE SLIP</div>
               <div class="sold-note">Sold Note</div>
@@ -2929,7 +2929,7 @@ const currentTime = new Date()
     const fiscalYear = getFiscalYear(record.slip_in_time || record.createdAt);
     
     // ✅ Get purRegType from record
-    const purRegType = record.pur_reg_type || record.purRegType || record.purchase || 'REGISTER';
+    const purRegType = record.pur_reg_type || record.purRegType || record.purchase || 'R';
 
     // ✅ Debug logs to verify data
     console.log("✅ Weight By Name (created_by_name):", record.created_by_name);
@@ -3109,7 +3109,7 @@ const currentTime = new Date()
         <div class="copy-label">Head Office Copy</div>
         <div class="print-date">Print Date: ${currentDate} ${currentTime}</div>
       </div>
-      <div class="company-name">MULTAN FEEDS (PVT)LTD</div>
+      <div class="company-name">Sabirs Vegetable Oils (Pvt.) Ltd.</div>
       <div style="height: 6px;"></div>
       <div class="slip-title">WEIGHBRIDGE SLIP</div>
       <div><b>IGP #</b> &nbsp;&nbsp;&nbsp;<span class="value" style="font-weight: bold; font-size: 20px;">${record.igp_no || ""}</span></div>
@@ -3199,7 +3199,7 @@ const currentTime = new Date()
         <div class="slip-header">
           <div class="header-left">Feed Mill Copy</div>
           <div class="header-center">
-            <div class="company-name">MULTAN FEEDS (PVT)LTD</div>
+            <div class="company-name">Sabirs Vegetable Oils (Pvt.) Ltd.</div>
             <div style="height: 6px;"></div>
             <div class="slip-title">WEIGHBRIDGE SLIP</div>
           </div>
@@ -3292,7 +3292,7 @@ const currentTime = new Date()
           <div class="slip-header">
             <div class="header-left">Customer Copy</div>
             <div class="header-center">
-              <div class="company-name">MULTAN FEEDS (PVT)LTD</div>
+              <div class="company-name">Sabirs Vegetable Oils (Pvt.) Ltd.</div>
               <div style="height: 6px;"></div>
               <div class="slip-title">WEIGHBRIDGE SLIP</div>
             </div>
@@ -3527,19 +3527,19 @@ const handleReload = async (wbId: any, record: PurchaseRecord) => {
     let apiEndpoint = '';
     switch (entryType) {
       case 'PURCHASE':
-        apiEndpoint = "http://portal.sabirsgroup.com:8184/ords/sabroso_ords/wb/wb-update-on-igp";
+        apiEndpoint = "http://portal.sabirsgroup.com:8184/ords/sabroso_ords/wb-om/wb-update-on-igp";
         break;
       case 'SALE':
-        apiEndpoint = "http://portal.sabirsgroup.com:8184/ords/sabroso_ords/wb/wb-update-on-igp"; 
+        apiEndpoint = "http://portal.sabirsgroup.com:8184/ords/sabroso_ords/wb-om/wb-update-on-igp"; 
         break;
       case 'SALE_RETURN':
-        apiEndpoint = "http://portal.sabirsgroup.com:8184/ords/sabroso_ords/wb/wb-update-on-igp"; 
+        apiEndpoint = "http://portal.sabirsgroup.com:8184/ords/sabroso_ords/wb-om/wb-update-on-igp"; 
         break;
       case 'SOLDNOTE':
-        apiEndpoint = "http://portal.sabirsgroup.com:8184/ords/sabroso_ords/wb/wb-update-on-igp"; 
+        apiEndpoint = "http://portal.sabirsgroup.com:8184/ords/sabroso_ords/wb-om/wb-update-on-igp"; 
         break;
       default:
-        apiEndpoint = "http://portal.sabirsgroup.com:8184/ords/sabroso_ords/wb/wb-update-on-igp";
+        apiEndpoint = "http://portal.sabirsgroup.com:8184/ords/sabroso_ords/wb-om/wb-update-on-igp";
     }
     
     console.log(`📤 Sending ${entryType} data to IGP API: ${apiEndpoint}`);
@@ -4001,11 +4001,11 @@ const fetchDataForIGP = async (wbId: any, entryType: string) => {
       {/* First Weight Image */}
       <td className="px-4 py-2 border border-black text-center">
         <img
-        src={`/captured_images/first_weight/slip_${record.slip_no}_${record.entry_type?.toUpperCase()}_${record.pur_reg_type || record.reg_type || 'REGISTER'}.jpg`}
+        src={`/captured_images/first_weight/slip_${record.slip_no}_${record.entry_type?.toUpperCase()}_${record.pur_reg_type || record.reg_type || 'R'}.jpg`}
         alt="First Weight"
         className="w-16 h-12 object-contain mx-auto cursor-pointer"
         onClick={() =>
-          window.open(`/captured_images/first_weight/slip_${record.slip_no}_${record.entry_type?.toUpperCase()}_${record.pur_reg_type || record.reg_type || 'REGISTER'}.jpg`, "_blank")
+          window.open(`/captured_images/first_weight/slip_${record.slip_no}_${record.entry_type?.toUpperCase()}_${record.pur_reg_type || record.reg_type || 'R'}.jpg`, "_blank")
         }
         onError={(e) => {
           const target = e.target as HTMLImageElement;
@@ -4022,11 +4022,11 @@ const fetchDataForIGP = async (wbId: any, entryType: string) => {
       {/* Second Weight Image */}
       <td className="px-4 py-2 border border-black text-center">
         <img
-    src={`/captured_images/second_weight/slip_${record.slip_no}_${record.entry_type?.toUpperCase()}_${record.pur_reg_type || record.reg_type || 'REGISTER'}.jpg`}
+    src={`/captured_images/second_weight/slip_${record.slip_no}_${record.entry_type?.toUpperCase()}_${record.pur_reg_type || record.reg_type || 'R'}.jpg`}
     alt="Second Weight"
     className="w-16 h-12 object-contain mx-auto cursor-pointer"
     onClick={() =>
-      window.open(`/captured_images/second_weight/slip_${record.slip_no}_${record.entry_type?.toUpperCase()}_${record.pur_reg_type || record.reg_type || 'REGISTER'}.jpg`, "_blank")
+      window.open(`/captured_images/second_weight/slip_${record.slip_no}_${record.entry_type?.toUpperCase()}_${record.pur_reg_type || record.reg_type || 'R'}.jpg`, "_blank")
     }
     onError={(e) => {
       const target = e.target as HTMLImageElement;
@@ -4591,11 +4591,11 @@ const fetchDataForIGP = async (wbId: any, entryType: string) => {
         <td className="px-4 py-2 border border-black text-center">
          {/* ✅ First Weight Image - with reg_type support */}
 <img
-  src={`/captured_images/first_weight/slip_${record.slip_no}_${record.entry_type?.toUpperCase()}_${record.pur_reg_type || record.reg_type || 'REGISTER'}.jpg`}
+  src={`/captured_images/first_weight/slip_${record.slip_no}_${record.entry_type?.toUpperCase()}_${record.pur_reg_type || record.reg_type || 'R'}.jpg`}
   alt="First Weight"
   className="w-16 h-12 object-cover mx-auto cursor-pointer"
   onClick={() =>
-    window.open(`/captured_images/first_weight/slip_${record.slip_no}_${record.entry_type?.toUpperCase()}_${record.pur_reg_type || record.reg_type || 'REGISTER'}.jpg`, "_blank")
+    window.open(`/captured_images/first_weight/slip_${record.slip_no}_${record.entry_type?.toUpperCase()}_${record.pur_reg_type || record.reg_type || 'R'}.jpg`, "_blank")
   }
   onError={(e) => {
     const target = e.target as HTMLImageElement;
@@ -4614,11 +4614,11 @@ const fetchDataForIGP = async (wbId: any, entryType: string) => {
          {/* ✅ Second Weight Image - with reg_type support */}
 {/* ✅ Second Weight Image - with reg_type support */}
 <img
-  src={`/captured_images/second_weight/slip_${record.slip_no}_${record.entry_type?.toUpperCase()}_${record.pur_reg_type || record.reg_type || 'REGISTER'}.jpg`}
+  src={`/captured_images/second_weight/slip_${record.slip_no}_${record.entry_type?.toUpperCase()}_${record.pur_reg_type || record.reg_type || 'R'}.jpg`}
   alt="Second Weight"
   className="w-16 h-12 object-cover mx-auto cursor-pointer"
   onClick={() =>
-    window.open(`/captured_images/second_weight/slip_${record.slip_no}_${record.entry_type?.toUpperCase()}_${record.pur_reg_type || record.reg_type || 'REGISTER'}.jpg`, "_blank")
+    window.open(`/captured_images/second_weight/slip_${record.slip_no}_${record.entry_type?.toUpperCase()}_${record.pur_reg_type || record.reg_type || 'R'}.jpg`, "_blank")
   }
   onError={(e) => {
     const target = e.target as HTMLImageElement;

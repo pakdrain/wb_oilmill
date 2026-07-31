@@ -16,7 +16,7 @@ type ComPortProviderProps = {
 
 // Provider Component
 export const ComPortProvider: React.FC<ComPortProviderProps> = ({ children }) => {
-  const [comPort, setComPort] = useState<string>("COM4"); // Default port
+  const [comPort, setComPort] = useState<string>("COM1"); // Default port
 
   return (
     <ComPortContext.Provider value={{ comPort, setComPort }}>

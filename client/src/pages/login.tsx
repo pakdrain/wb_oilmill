@@ -219,7 +219,7 @@ const { login, user } = useAuth();
                   Login
                 </TabsTrigger>
                 <TabsTrigger 
-                  value="register" 
+                  value="R" 
                   className="data-[state=active]:bg-monitoring-blue data-[state=active]:text-white"
                 >
                   <UserPlus className="h-4 w-4 mr-2" />
@@ -234,7 +234,7 @@ const { login, user } = useAuth();
                 </CardDescription>
               </TabsContent>
 
-              <TabsContent value="register" className="mt-6">
+              <TabsContent value="R" className="mt-6">
                 <CardTitle className="text-2xl text-white">Create Account</CardTitle>
                 <CardDescription className="text-gray-400">
                   Register a new user account for the system
@@ -317,7 +317,7 @@ const { login, user } = useAuth();
               </TabsContent>
 
               {/* Registration Form */}
-              <TabsContent value="register">
+              <TabsContent value="R">
                 <form onSubmit={registerForm.handleSubmit(onRegister)} className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="registerBranch" className="text-gray-300">Branch</Label>

@@ -193,8 +193,8 @@ interface SaleReportItem {
   itemGroup: string;
   netWeight: number;
   manual_dc_no?: string | number;
+  status?: string;      // ✅ NEW: Online / Offline / -
 }
-
 
 interface SCReportItem {
   srNo: number;          // Serial number
@@ -460,6 +460,7 @@ useEffect(() => {
 
 
 
+
 // Generate Purchase HTML report
 const generateHTMLReport = (data: ReportItem[], company: string) => {
 
@@ -503,7 +504,8 @@ const generateHTMLReport = (data: ReportItem[], company: string) => {
   let grandDed = 0;
   let grandNet = 0;
   let grandSupWh = 0;
-  let grandFreight = 0;
+  // ❌ Freight removed
+  // let grandFreight = 0;
 
   let rows = '';
 
@@ -517,28 +519,29 @@ const generateHTMLReport = (data: ReportItem[], company: string) => {
     // Group title
     rows += `
       <tr style="background:#e6f7ff; font-weight:bold;">
-        <td colspan="16" style="text-align:left;">${group}</td>
+        <td colspan="17" style="text-align:left;">${group}</td>
       </tr>
     `;
 
-    // Column headers
+    // Column headers - ✅ Freight removed, B.Rcvd column duplicated
     rows += `
       <tr>
         <th>Sr #</th>
-        <th>GRN</th>
+        <th>IGP No</th>
         <th style="min-width:120px;">FW Time</th>
         <th style="min-width:120px;">SW Time</th>
-        <th>WB</th>
+        <th>Slip No</th>
         <th style="min-width:58px;">Vehicle</th>
         <th>Supplier</th>
         <th>B.Rcvd</th>
+        <th>Accepted</th> <!-- ✅ Duplicate B.Rcvd -->
         <th>Gross</th>
         <th>Tare</th>
         <th>Bardana</th>
         <th>DED</th>
         <th>Net</th>
         <th>Sup.Wh</th>
-        <th>Freight</th>
+        <!-- ❌ Freight column removed -->
         <th>Status</th>
       </tr>
     `;
@@ -557,7 +560,8 @@ const generateHTMLReport = (data: ReportItem[], company: string) => {
       grandDed += Number(item.ded || 0);
       grandNet += Number(item.net || 0);
       grandSupWh += Number(item.supWh || 0);
-      grandFreight += Number(item.freight || 0);
+      // ❌ Freight removed
+      // grandFreight += Number(item.freight || 0);
 
       rows += `
         <tr>
@@ -569,13 +573,14 @@ const generateHTMLReport = (data: ReportItem[], company: string) => {
           <td style="color:red;">${item.vehicleNo ?? ''}</td>
           <td>${item.supplierName ?? ''}</td>
           <td>${item.bRcvd ?? 0}</td>
+          <td>${item.bRcvd ?? 0}</td> <!-- ✅ Duplicate B.Rcvd -->
           <td>${item.gross ?? 0}</td>
           <td>${item.tare ?? 0}</td>
           <td>${item.bardana ?? 0}</td>
           <td>${item.ded ?? 0}</td>
           <td>${item.net ?? 0}</td>
           <td>${item.supWh ?? 0}</td>
-          <td>${item.freight ?? 0}</td>
+          <!-- ❌ Freight column removed -->
           <td class="${item.status?.toLowerCase() === 'online' ? 'status-online' : ''}">
             ${item.status ?? ''}
           </td>
@@ -584,39 +589,41 @@ const generateHTMLReport = (data: ReportItem[], company: string) => {
       serialNo++;
     });
 
-    // Item-wise total row (matching image format)
+    // Item-wise total row - ✅ Freight removed, B.Rcvd duplicate
     rows += `
       <tr class="total-row">
-        <td colspan="5">TOTAL</td>
+        <td colspan="5">Vehicle Count</td>
         <td>${vehicleCount}</td>
         <td>&nbsp;</td>
         <td>${itemBRcvd}</td>
+        <td>${itemBRcvd}</td> <!-- ✅ Duplicate B.Rcvd -->
         <td>&nbsp;</td>
         <td>&nbsp;</td>
         <td>&nbsp;</td>
         <td>${itemDedTotal}</td>
         <td>${itemNetTotal}</td>
         <td>&nbsp;</td>
-        <td>&nbsp;</td>
+        <!-- ❌ Freight column removed -->
         <td>&nbsp;</td>
       </tr>
     `;
   });
 
-  // Grand total row
+  // Grand total row - ✅ Freight removed, B.Rcvd duplicate
   rows += `
     <tr class="grand-total">
-      <td colspan="5"></td>
+      <td colspan="5">Total Vehicle Count</td>
       <td>${grandVehicleCount}</td>
       <td></td>
       <td>${grandBRcvd}</td>
+      <td>${grandBRcvd}</td> <!-- ✅ Duplicate B.Rcvd -->
       <td>${grandGross}</td>
       <td>${grandTare}</td>
       <td>${grandBardana}</td>
       <td>${grandDed}</td>
       <td>${grandNet}</td>
       <td>${grandSupWh}</td>
-      <td>${grandFreight}</td>
+      <!-- ❌ Freight column removed -->
       <td></td>
     </tr>
   `;
@@ -698,7 +705,6 @@ const generateHTMLReport = (data: ReportItem[], company: string) => {
 </html>
 `;
 };
-
 
 
 
@@ -2232,7 +2238,7 @@ const runSoldNoteReport = async (
 const generateSaleReportHTML = (
   data: SaleReportItem[],
   company: string,
-  bagsSummary: { item_desc: string; BAGS: number }[] = []
+  bagsSummary: { item_desc: string; BAGS: number; NET_WEIGHT: number }[] = []
 ) => {
   const reportDate = new Date().toLocaleString('en-US', {
     day: '2-digit', month: 'short', year: 'numeric',
@@ -2243,7 +2249,6 @@ const generateSaleReportHTML = (
   let serialNo = 0;
 
   let totalVehicles = 0;
-  let totalFreight = 0;
   let totalBags = 0;
   let totalNetWeight = 0;
 
@@ -2257,41 +2262,45 @@ const generateSaleReportHTML = (
   Object.keys(groupedData).forEach(party => {
     const groupItems = groupedData[party];
     let vehicleCount = 0;
-    let freightCount = 0;
     let bagsCount = 0;
     let netWeightCount = 0;
 
-    rows += `<tr><td colspan="12" class="dnn-row">Party: ${party}</td></tr>`;
+    rows += `<tr><td colspan="11" class="dnn-row">Party: ${party}</td></tr>`;
 
- // Group by slipNo (DNN) — same DNN ke records ek saath
-const vehicleGrouped: Record<string, SaleReportItem[]> = {};
-groupItems.forEach(item => {
-  const key = item.slipNo || 'Unknown'; // ✅ sirf DNN se group
-  if (!vehicleGrouped[key]) vehicleGrouped[key] = [];
-  vehicleGrouped[key].push(item);
-});
+    // Group by slipNo (DNN) — same DNN ke records ek saath
+    const vehicleGrouped: Record<string, SaleReportItem[]> = {};
+    groupItems.forEach(item => {
+      const key = item.slipNo || 'Unknown';
+      if (!vehicleGrouped[key]) vehicleGrouped[key] = [];
+      vehicleGrouped[key].push(item);
+    });
 
-Object.keys(vehicleGrouped).forEach(key => {
-  const vItems = vehicleGrouped[key];
-  const vNo = vItems[0].vehicleNo || 'Unknown';
-  vehicleCount++;
+    Object.keys(vehicleGrouped).forEach(key => {
+      const vItems = vehicleGrouped[key];
+      const vNo = vItems[0].vehicleNo || 'Unknown';
+      vehicleCount++;
 
-  // ✅ Divide freight by number of rows for this DNN
-  const totalFreightForDNN = Number(vItems[0].freight || 0);
-  const freightPerRow = vItems.length > 1
-    ? totalFreightForDNN / vItems.length
-    : totalFreightForDNN;
+      vItems.forEach((item, index) => {
+        if (index === 0) serialNo++;
 
-  vItems.forEach((item, index) => {
-    if (index === 0) serialNo++;
+        bagsCount += Number(item.noOfBags || 0);
+        netWeightCount += Number(item.netWeight || 0);
 
-    // ✅ Add full freight only once to the party/total counter
-    if (index === 0) freightCount += totalFreightForDNN;
+        // ✅ Status: Online / Offline with color
+        let status = '';
+        let statusClass = '';
+        if (item.status === 'Online' || item.status === 'online' || item.status === 'ONLINE') {
+          status = 'Online';
+          statusClass = 'status-online';
+        } else if (item.status === 'Offline' || item.status === 'offline' || item.status === 'OFFLINE') {
+          status = 'Offline';
+          statusClass = 'status-offline';
+        } else {
+          status = '-';
+          statusClass = '';
+        }
 
-    bagsCount += Number(item.noOfBags || 0);
-    netWeightCount += Number(item.netWeight || 0);
-
-    rows += `
+        rows += `
 <tr>
   <td>${index === 0 ? serialNo : ''}</td>
   <td>${index === 0 ? item.slipNo || '' : ''}</td>
@@ -2299,43 +2308,49 @@ Object.keys(vehicleGrouped).forEach(key => {
   <td>${index === 0 ? formatPakistanTime(item.fwTime) : ''}</td>
   <td>${index === 0 ? formatPakistanTime(item.swTime) : ''}</td>
   <td>${index === 0 ? vNo : ''}</td>
-  <td>${freightPerRow}</td>  <!-- ✅ divided freight per row -->
   <td>${index === 0 ? item.customerName || '' : ''}</td>
   <td>${index === 0 ? item.mt || '' : ''}</td>
   <td>${item.noOfBags || 0}</td>
   <td>${item.netWeight || 0}</td>
-  <td>${index === 0 ? company : ''}</td>
+  <td class="${statusClass}">${index === 0 ? status : ''}</td>
 </tr>`;
-  });
-});
+      });
+    });
 
     totalVehicles += vehicleCount;
-    totalFreight += freightCount;
     totalBags += bagsCount;
     totalNetWeight += netWeightCount;
 
+    // ✅ Vehicle Count: Label Time Out column (5th column index), Value Vehicle column (6th column index)
     rows += `
 <tr class="vehicle-count-row">
-  <td></td><td></td><td></td><td></td><td>Vehicle Count</td>
-  <td>${vehicleCount}</td><td>${freightCount}</td><td></td><td></td><td>${bagsCount}</td><td>${netWeightCount}</td><td></td>
+  <td></td><td></td><td></td><td></td>
+  <td>Vehicle Count</td>  <!-- ✅ Label in Time Out column -->
+  <td>${vehicleCount}</td>  <!-- ✅ Value in Vehicle column -->
+  <td></td><td></td>
+  <td>${bagsCount}</td>
+  <td>${netWeightCount}</td>
+  <td></td>
 </tr>`;
   });
 
+  // ✅ Grand Total: Label Time Out column, Value Vehicle column
   rows += `
 <tr class="vehicle-count-row">
-  <td colspan="4"></td>
-  <td><b>Total Vehicle Count</b></td>
-  <td>${totalVehicles}</td>
-  <td>${totalFreight}</td>
-  <td colspan="2"></td>
+  <td></td><td></td><td></td><td></td>
+  <td><b>Total Vehicle Count</b></td>  <!-- ✅ Label in Time Out column -->
+  <td>${totalVehicles}</td>  <!-- ✅ Value in Vehicle column -->
+  <td></td><td></td>
   <td>${totalBags}</td>
   <td>${totalNetWeight}</td>
   <td></td>
 </tr>`;
 
+  // ✅ Bags Summary with Net Weight
   const mappedBagsSummary = bagsSummary.map(item => ({
     item_desc: item.item_desc || 'Unknown',
-    BAGS: Number(item.BAGS ?? 0)
+    BAGS: Number(item.BAGS ?? 0),
+    NET_WEIGHT: Number(item.NET_WEIGHT ?? 0)
   }));
 
   let bagsRows = '';
@@ -2344,10 +2359,12 @@ Object.keys(vehicleGrouped).forEach(key => {
 <tr>
   <td>${item.item_desc}</td>
   <td>${item.BAGS}</td>
+  <td>${item.NET_WEIGHT.toLocaleString('en-IN')}</td>
 </tr>`;
   });
 
   const totalBagsSummary = mappedBagsSummary.reduce((sum, item) => sum + item.BAGS, 0);
+  const totalNetWeightSummary = mappedBagsSummary.reduce((sum, item) => sum + item.NET_WEIGHT, 0);
 
   return `
 <!DOCTYPE html>
@@ -2371,6 +2388,8 @@ Object.keys(vehicleGrouped).forEach(key => {
   th { color:green; font-weight:bold; }
   .dnn-row { color:blue; font-weight:bold; text-align:left; padding:6px 0; padding-left:6px; }
   .vehicle-count-row { text-align:center; color:#8B0000; font-weight:bold; }
+  .status-online { color:green; font-weight:bold; }
+  .status-offline { color:red; font-weight:bold; }
 </style>
 </head>
 <body>
@@ -2398,12 +2417,11 @@ Object.keys(vehicleGrouped).forEach(key => {
     <th>Time In</th>
     <th>Time Out</th>
     <th>Vehicle #</th>
-    <th>Freight</th>
     <th>Party Name</th>
     <th>Feed Name</th>
     <th>Bags</th>
     <th>Net Weight</th>
-    <th>Company Name</th>
+    <th>Status</th>
   </tr>
   ${rows}
 </table>
@@ -2414,11 +2432,13 @@ ${mappedBagsSummary.length ? `
   <tr>
     <th>Feed Name</th>
     <th>Total Bags</th>
+    <th>Net Weight</th>
   </tr>
   ${bagsRows}
   <tr>
     <td><b>Total</b></td>
     <td><b>${totalBagsSummary}</b></td>
+    <td><b>${totalNetWeightSummary.toLocaleString('en-IN')}</b></td>
   </tr>
 </table>` : ''}
 
@@ -2426,7 +2446,6 @@ ${mappedBagsSummary.length ? `
 </html>
 `;
 };
-
 
 
 
@@ -2504,42 +2523,47 @@ const runSaleReport = async (
       return;
     }
 
+    // ✅ Map data with status
     const data: SaleReportItem[] = salesData.map((d: any, i: number) => ({
-  srNo: i + 1,
-  mt: d.feed_name,
-  fwTime: d.slip_in_time,
-  swTime: d.slip_out_time,
-  slipNo: d.slip_no,
-  manual_dc_no: d.manual_dc_no || '',  
-  vehicleNo: d.vehicle_no,
-  customerName: d.party_name,
-  noOfBags: d.no_of_bags,
-  netWeight: Number(d.net_weight || 0),
-  freight: d.freight ?? 0,
-  branchName: d.company_name,
-  itemGroup: d.feed_name,
-}));
+      srNo: i + 1,
+      mt: d.feed_name,
+      fwTime: d.slip_in_time,
+      swTime: d.slip_out_time,
+      slipNo: d.slip_no,
+      manual_dc_no: d.manual_dc_no || '',  
+      vehicleNo: d.vehicle_no,
+      customerName: d.party_name,
+      noOfBags: d.no_of_bags,
+      netWeight: Number(d.net_weight || 0),
+      freight: d.freight ?? 0,
+      branchName: d.company_name,
+      itemGroup: d.feed_name,
+      status: d.status || '',  // ✅ NEW: status from API
+    }));
 
-console.log('First item full:', JSON.stringify(data[0]));
+    console.log('First item full:', JSON.stringify(data[0]));
 
-    // ✅ BAG SUMMARY FROM FILTERED DATA (FIX)
-    const bagMap: Record<string, number> = {};
+    // ✅ BAG SUMMARY FROM FILTERED DATA (WITH NET WEIGHT)
+    const bagMap: Record<string, { BAGS: number; NET_WEIGHT: number }> = {};
 
     salesData.forEach((item: any) => {
       const key = item.feed_name || 'Unknown';
       const bags = Number(item.no_of_bags) || 0;
+      const netWeight = Number(item.net_weight) || 0;
 
       if (!bagMap[key]) {
-        bagMap[key] = 0;
+        bagMap[key] = { BAGS: 0, NET_WEIGHT: 0 };
       }
 
-      bagMap[key] += bags;
+      bagMap[key].BAGS += bags;
+      bagMap[key].NET_WEIGHT += netWeight;
     });
 
-    const bagsSummaryMapped: { item_desc: string; BAGS: number }[] =
+    const bagsSummaryMapped: { item_desc: string; BAGS: number; NET_WEIGHT: number }[] =
       Object.keys(bagMap).map((key) => ({
         item_desc: key,
-        BAGS: bagMap[key]
+        BAGS: bagMap[key].BAGS,
+        NET_WEIGHT: bagMap[key].NET_WEIGHT
       }));
 
     console.log('Mapped Sale Report data:', data);
@@ -2559,9 +2583,6 @@ console.log('First item full:', JSON.stringify(data[0]));
     alert('Error loading Sale Report. Check console.');
   }
 };
-
-
-
 
 
 

@@ -43,7 +43,7 @@ const fetchIgpData = async () => {
   }
   try {
     const response = await axios.get(
-      `http://portal.sabirsgroup.com:8184/ords/sabroso_ords/webridge_igp/live_data`,
+      `http://portal.sabirsgroup.com:8184/ords/sabroso_ords/wb-om/live_data`,
       { params: { igp_no: formData.igpNo } }
     );
 

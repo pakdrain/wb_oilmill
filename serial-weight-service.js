@@ -13,11 +13,11 @@ let currentWeight = "0.00";
 let currentUnit = "kg";
 let isPortConnected = false;
 let serialPort = null;
-let currentComPort = "COM4"; // ✅ dynamic value
+let currentComPort = "COM1"; // ✅ dynamic value
 let currentBaudRate = 9600;
 
 // Initialize serial port connection
-async function connectToSerial(port = "COM4", baudRate = 9600) {
+async function connectToSerial(port = "COM1", baudRate = 9600) {
   try {
     if (serialPort && serialPort.isOpen) {
       serialPort.close();
@@ -105,7 +105,7 @@ function parseWeightData(rawData) {
 
 // API Endpoints
 app.post("/api/weight/connect", (req, res) => {
-  const { port = "COM4", baudRate = 9600 } = req.body;
+  const { port = "COM1", baudRate = 9600 } = req.body;
   console.log(`🔌 Connecting to ${port} at ${baudRate} baud...`);
 
   connectToSerial(port, baudRate);

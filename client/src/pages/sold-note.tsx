@@ -1142,7 +1142,7 @@ const generateReportHTML = (reportData: any = null) => {
         <div class="copy-label">Head Office Copy</div>
         <div class="print-date">Print Date: ${currentDate} ${currentTime}</div>
       </div>
-      <div class="company-name">MULTAN FEEDS (PVT)LTD</div>
+      <div class="company-name">Sabirs Vegetable Oils (Pvt.) Ltd.</div>
       <div style="height: 5px;"></div>
       <div class="slip-title">WEIGHBRIDGE SLIP</div>
       <div class="sold-note">Sold Note</div>
@@ -1223,7 +1223,7 @@ const generateReportHTML = (reportData: any = null) => {
         <div class="slip-header">
           <div class="header-left">Feed Mill Copy</div>
           <div class="header-center">
-            <div class="company-name">MULTAN FEEDS (PVT)LTD</div>
+            <div class="company-name">Sabirs Vegetable Oils (Pvt.) Ltd.</div>
             <div style="height: 5px;"></div>
             <div class="slip-title">WEIGHBRIDGE SLIP</div>
           </div>
@@ -1304,7 +1304,7 @@ const generateReportHTML = (reportData: any = null) => {
           <div class="slip-header">
             <div class="header-left">Customer Copy</div>
             <div class="header-center">
-              <div class="company-name">MULTAN FEEDS (PVT)LTD</div>
+              <div class="company-name">Sabirs Vegetable Oils (Pvt.) Ltd.</div>
               <div style="height: 5px;"></div>
               <div class="slip-title">WEIGHBRIDGE SLIP</div>
             </div>
@@ -1620,7 +1620,7 @@ const navigateToNext = async () => {
 
     try {
       const response = await fetch(
-        `http://portal.sabirsgroup.com:8184/ords/sabroso_ords/wb/live_data?igp_no=${igpNoClean}`
+        `http://portal.sabirsgroup.com:8184/ords/sabroso_ords/wb-om/live_data?igp_no=${igpNoClean}`
       );
 
       if (!response.ok)
@@ -1710,7 +1710,7 @@ const navigateToNext = async () => {
     }
     try {
       const response = await fetch(
-        `http://portal.sabirsgroup.com:8184/ords/sabroso_ords/wb/dc_data?dc_no=${dcNo}`
+        `http://portal.sabirsgroup.com:8184/ords/sabroso_ords/wb-om/dc_data?dc_no=${dcNo}`
       );
 
       if (!response.ok) {
@@ -3550,7 +3550,7 @@ if (isEditMode && formData.onlineEntry === "Yes") {
       console.log("📤 Sending SoldNote DB data to IGP API:", dbData);
 
       const igpResp = await fetch(
-        "http://portal.sabirsgroup.com:8184/ords/sabroso_ords/wb/wb-update-on-igp",
+        "http://portal.sabirsgroup.com:8184/ords/sabroso_ords/wb-om/wb-update-on-igp",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -3869,7 +3869,7 @@ if (isEditMode && formData.onlineEntry === "Yes") {
 
 //       // ✅ Send DB data directly to IGP API
 //       const IGP_API_URL =
-//         "http://portal.sabirsgroup.com:8184/ords/sabroso_ords/wb/wb-update-on-igp";
+//         "http://portal.sabirsgroup.com:8184/ords/sabroso_ords/wb-om/wb-update-on-igp";
 
 //       console.log("🌐 Sending SOLDNOTE IGP payload to API:", IGP_API_URL);
 //       console.log("📦 SOLDNOTE Payload being sent:", JSON.stringify(dbData, null, 2));
@@ -4443,7 +4443,7 @@ if (isEditMode && formData.onlineEntry === "Yes") {
         <div class="copy-label">Head Office Copy</div>
         <div class="print-date">Print Date: ${currentDate} ${currentTime}</div>
       </div>
-      <div class="company-name">MULTAN FEEDS (PVT)LTD</div>
+      <div class="company-name">Sabirs Vegetable Oils (Pvt.) Ltd.</div>
       <div style="height: 6px;"></div>
       <div class="slip-title">WEIGHBRIDGE SLIP</div>
       <div class="sold-note">Sold Note</div>
@@ -4523,7 +4523,7 @@ if (isEditMode && formData.onlineEntry === "Yes") {
         <div class="slip-header">
           <div class="header-left">Feed Mill Copy</div>
           <div class="header-center">
-            <div class="company-name">MULTAN FEEDS (PVT)LTD</div>
+            <div class="company-name">Sabirs Vegetable Oils (Pvt.) Ltd.</div>
             <div style="height: 6px;"></div>
             <div class="slip-title">WEIGHBRIDGE SLIP</div>
           </div>
@@ -4606,7 +4606,7 @@ if (isEditMode && formData.onlineEntry === "Yes") {
           <div class="slip-header">
             <div class="header-left">Customer Copy</div>
             <div class="header-center">
-              <div class="company-name">MULTAN FEEDS (PVT)LTD</div>
+              <div class="company-name">Sabirs Vegetable Oils (Pvt.) Ltd.</div>
               <div style="height: 6px;"></div>
               <div class="slip-title">WEIGHBRIDGE SLIP</div>
             </div>

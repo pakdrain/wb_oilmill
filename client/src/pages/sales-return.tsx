@@ -740,7 +740,7 @@ const filteredCustomers = useMemo(() => {
 
     try {
       const response = await fetch(
-        `http://portal.sabirsgroup.com:8184/ords/sabroso_ords/wb/dc_data?dc_no=${dcNo}`
+        `http://portal.sabirsgroup.com:8184/ords/sabroso_ords/wb-om/dc_data?dc_no=${dcNo}`
       );
 
       if (!response.ok) {
@@ -1926,7 +1926,7 @@ const totalFeedBags = nonEmptyRows.reduce((sum, row) => {
           console.log("🚀 IGP API payload:", dbData);
 
           const igpResp = await fetch(
-            "http://portal.sabirsgroup.com:8184/ords/sabroso_ords/wb/wb-update-on-igp",
+            "http://portal.sabirsgroup.com:8184/ords/sabroso_ords/wb-om/wb-update-on-igp",
             {
               method: "POST",
               headers: { "Content-Type": "application/json" },

@@ -1687,10 +1687,36 @@ app.post("/api/purchases", async (req, res) => {
       bardana_bag = null,
     } = purchaseData;
 
-    const company_id = 4;
+    const company_id = 5;
 
     const onlineEntryStr = online_entry === "Yes" || online_entry === true ? "Yes" : null;
     const offlineEntryStr = offline_entry === "Yes" || offline_entry === true ? "Yes" : null;
+
+    // ✅ ROUND VALUES BEFORE SAVING
+    const roundValue = (value: any): number | null => {
+      if (value === null || value === undefined || value === '') return null;
+      const num = parseFloat(value);
+      if (isNaN(num)) return null;
+      return Math.round(num);
+    };
+
+    const roundedFirstWeight = roundValue(first_weight);
+    const roundedSecondWeight = roundValue(second_weight);
+    const roundedNetWeight = roundValue(net_weight);
+    const roundedBardanaWeight = roundValue(bardana_weight);
+    const roundedGrossWeight = roundValue(gross_weight);
+    const roundedGrossWbd = roundValue(gross_wbd);
+    const roundedSupplierWeight = roundValue(supplier_weight);
+    const roundedFreight = roundValue(freight);
+
+    console.log("🔍 DEBUG - Rounded Values:", {
+      original_bardana_weight: bardana_weight,
+      rounded_bardana_weight: roundedBardanaWeight,
+      original_gross_wbd: gross_wbd,
+      rounded_gross_wbd: roundedGrossWbd,
+      original_supplier_weight: supplier_weight,
+      rounded_supplier_weight: roundedSupplierWeight,
+    });
 
     const query = `
       INSERT INTO wb_weighbridge (
@@ -1716,12 +1742,12 @@ app.post("/api/purchases", async (req, res) => {
       WB_ID,                    // $1
       slip_no,                  // $2
       slip_in_time,             // $3
-      first_weight,             // $4
-      second_weight,            // $5
-      net_weight,               // $6
-      bardana_weight,           // $7
-      gross_weight,             // $8
-      freight,                  // $9
+      roundedFirstWeight,       // $4  ✅ Rounded
+      roundedSecondWeight,      // $5  ✅ Rounded
+      roundedNetWeight,         // $6  ✅ Rounded
+      roundedBardanaWeight,     // $7  ✅ Rounded
+      roundedGrossWeight,       // $8  ✅ Rounded
+      roundedFreight,           // $9  ✅ Rounded
       remarks,                  // $10
       driver_name,              // $11
       company_id,               // $12
@@ -1737,17 +1763,27 @@ app.post("/api/purchases", async (req, res) => {
       slip_out_time,            // $22
       status,                   // $23
       slip_date,                // $24
-      pur_reg_type,             // $25 - Purchase module
-      reg_type,                 // $26 - ⭐ Sale module
-      gross_wbd,                // $27 - gross_w_b_d column
-      supplier_weight,          // $28 - supp_weight column
-      bardana_bag,              // $29 - 'Y' or 'N'
+      pur_reg_type,             // $25
+      reg_type,                 // $26
+      roundedGrossWbd,          // $27  ✅ Rounded
+      roundedSupplierWeight,    // $28  ✅ Rounded
+      bardana_bag,              // $29
     ];
 
-
+    console.log("🔍 DEBUG - Final Values Array:", {
+      bardana_weight: values[6],
+      gross_wbd: values[26],
+      supp_weight: values[27],
+    });
 
     const result = await pool.query(query, values);
-    console.log("✅ Purchase saved successfully:", result.rows[0]);
+    console.log("✅ Purchase saved successfully:", {
+      wb_id: result.rows[0].wb_id,
+      bardana_weight: result.rows[0].bardana_weight,
+      gross_w_b_d: result.rows[0].gross_w_b_d,
+      supp_weight: result.rows[0].supp_weight,
+    });
+    
     res.json(result.rows[0]);
   } catch (err) {
     console.error("❌ Error inserting purchase:", err.message);
@@ -1757,7 +1793,6 @@ app.post("/api/purchases", async (req, res) => {
     });
   }
 });
-
 
 
 
@@ -1865,8 +1900,43 @@ app.post("/api/purchase-items", async (req, res) => {
       freight_child = 0,
       created_by = null,
       last_updated_by = null,
-      con = null, // ⭐ Database column is 'con'
+      con = null,
     } = itemData;
+
+    // ✅ ROUND FUNCTION - Only for values that need rounding
+    const roundValue = (value: any): number | null => {
+      if (value === null || value === undefined || value === '') return null;
+      const num = parseFloat(value);
+      if (isNaN(num)) return null;
+      return Math.round(num);
+    };
+
+    // ✅ NO ROUND for weight_per_bags - keep as is (0.1, 0.2, etc.)
+    const parsedWeightPerBags = weight_per_bags !== null && weight_per_bags !== undefined && weight_per_bags !== ''
+      ? parseFloat(weight_per_bags)
+      : null;
+
+    // ✅ Round other values
+    const roundedBardanaWeight = roundValue(bardana_weight);
+    const roundedSupplierWeight = roundValue(supplier_weight);
+    const roundedSupWeightWithoutBardana = roundValue(sup_weight_wthout_bardana);
+    const roundedNetSupplierWeight = roundValue(net_supplier_weight);
+    const roundedQualityDeduction = roundValue(quality_deduction);
+    const roundedPoQty = roundValue(po_qty);
+    const roundedIgpQty = roundValue(igp_qty);
+    const roundedBalanceQty = roundValue(balance_qty);
+    const roundedDoQty = roundValue(do_qty);
+    const roundedDcQty = roundValue(dc_qty);
+    const roundedTotalFeedBags = roundValue(total_feed_bags);
+    const roundedFreightChild = roundValue(freight_child);
+    const roundedNoOfBags = roundValue(no_of_bags);
+
+    console.log("🔍 DEBUG - Values:", {
+      original_weight_per_bags: weight_per_bags,
+      parsed_weight_per_bags: parsedWeightPerBags,  // ✅ No rounding
+      original_bardana_weight: bardana_weight,
+      rounded_bardana_weight: roundedBardanaWeight,
+    });
 
     const finalDate = igp_date || null;
 
@@ -1884,7 +1954,7 @@ app.post("/api/purchase-items", async (req, res) => {
         customer_id, customer_name, do_no, do_qty, dc_qty, igp_id, item_id, dc_id,
         created_by, last_updated_by, total_feed_bags,
         freight_child,
-        con, -- ⭐ Database column is 'con'
+        con,
         creation_date, last_updated_date
       )
       VALUES (
@@ -1900,7 +1970,7 @@ app.post("/api/purchase-items", async (req, res) => {
         $27, $28, $29, $30, $31, $32, $33, $34,
         $35, $36, $37,
         $38,
-        $39, -- ⭐ con value
+        $39,
         CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
       )
       RETURNING *;
@@ -1914,15 +1984,15 @@ app.post("/api/purchase-items", async (req, res) => {
       igp_no,
       manual_dc_no,
       vehicle_no,
-      weight_per_bags != null ? parseFloat(weight_per_bags) : null,
-      finalDate,
-      finalDate,
-      supplier_weight != null ? parseFloat(supplier_weight) : null,
-      sup_weight_wthout_bardana != null ? parseFloat(sup_weight_wthout_bardana) : null,
-      net_supplier_weight != null ? parseFloat(net_supplier_weight) : null,
-      quality_deduction != null ? parseFloat(quality_deduction) : null,
-      bardana_weight != null ? parseFloat(bardana_weight) : null,
-      no_of_bags != null ? parseInt(no_of_bags) : null,
+      parsedWeightPerBags,              // $8  ✅ NO ROUNDING
+      finalDate,                        // $9
+      finalDate,                        // $10
+      roundedSupplierWeight,            // $11 ✅ Rounded
+      roundedSupWeightWithoutBardana,   // $12 ✅ Rounded
+      roundedNetSupplierWeight,         // $13 ✅ Rounded
+      roundedQualityDeduction,          // $14 ✅ Rounded
+      roundedBardanaWeight,             // $15 ✅ Rounded
+      roundedNoOfBags,                  // $16 ✅ Rounded
       vendor_id != null ? parseInt(vendor_id) : null,
       vendor_name,
       bag_condition,
@@ -1930,27 +2000,38 @@ app.post("/api/purchase-items", async (req, res) => {
       po_no,
       item_code,
       item_desc,
-      po_qty != null ? parseFloat(po_qty) : null,
-      igp_qty != null ? parseFloat(igp_qty) : null,
-      balance_qty != null ? parseFloat(balance_qty) : null,
+      roundedPoQty,                     // $24 ✅ Rounded
+      roundedIgpQty,                    // $25 ✅ Rounded
+      roundedBalanceQty,                // $26 ✅ Rounded
       customer_id != null ? parseInt(customer_id) : null,
       customer_name,
       do_no,
-      do_qty != null ? parseFloat(do_qty) : null,
-      dc_qty != null ? parseFloat(dc_qty) : null,
+      roundedDoQty,                     // $30 ✅ Rounded
+      roundedDcQty,                     // $31 ✅ Rounded
       igp_id != null ? parseInt(igp_id) : null,
       item_id != null ? parseInt(item_id) : null,
       dc_id != null ? parseInt(dc_id) : null,
       created_by != null ? parseInt(created_by) : null,
       last_updated_by,
-      total_feed_bags != null ? parseFloat(total_feed_bags) : null,
-      freight_child != null ? parseFloat(freight_child) : 0,
-      con || null, // ⭐ Save to 'con' column
+      roundedTotalFeedBags,             // $37 ✅ Rounded
+      roundedFreightChild,              // $38 ✅ Rounded
+      con || null,                      // $39
     ];
+
+    console.log("🔍 DEBUG - Final Values Array:", {
+      weight_per_bags: values[7],
+      bardana_weight: values[14],
+      supplier_weight: values[10],
+    });
 
     const result = await pool.query(query, values);
 
-    console.log("✅ Purchase item saved with con:", result.rows[0]);
+    console.log("✅ Purchase item saved:", {
+      wb_item_p_id: result.rows[0].wb_item_p_id,
+      weight_per_bags: result.rows[0].weight_per_bags,
+      bardana_weight: result.rows[0].bardana_weight,
+    });
+
     res.status(201).json({
       success: true,
       message: "Purchase item saved successfully",
@@ -1965,8 +2046,6 @@ app.post("/api/purchase-items", async (req, res) => {
     });
   }
 });
-
-
 
 // app.get("/api/form-report/:wb_id", async (req, res) => {
 //   try {
@@ -2162,7 +2241,7 @@ app.get("/api/form-report/:wb_id", async (req, res) => {
     } = soldnoteData;
 
     // ✅ Hardcoded company_id
-    const company_id = 4;
+    const company_id = 5;
 
     const onlineEntryStr =
       online_entry === "Yes" || online_entry === true ? "Yes" : null;
@@ -2369,26 +2448,55 @@ app.post("/api/capture/first-weight", async (req: Request, res: Response) => {
       cameraIp = "10.10.10.146", 
       cameraPort = 554, 
       entryType = "PURCHASE",
-      purRegType = "REGISTER", // ✅ For PURCHASE
-      reg_type = "REGISTER"    // ✅ For SALE
+      purRegType,    // For PURCHASE
+      reg_type       // For SALE
     } = req.body;
 
     if (!slipNo) {
       return res.status(400).json({ error: "Slip number is required" });
     }
 
-    // ✅ Determine which reg type to use based on entryType
-    const isPurchase = entryType === 'PURCHASE' || entryType === 'PURCHASE_RETURN';
-    const regType = isPurchase ? purRegType : reg_type;
+    // Convert to uppercase
+    const entryTypeUpper = String(entryType).toUpperCase();
+    const regTypeUpper = reg_type ? String(reg_type).toUpperCase() : '';
+    const purRegTypeUpper = purRegType ? String(purRegType).toUpperCase() : '';
 
-    console.log(`📸 Capturing first weight image for slip: ${slipNo} (${entryType} - ${regType})`);
+    // ✅ Determine which reg type to use based on entryType
+    let regTypeToUse = '';
+    
+    if (entryTypeUpper === 'SALE' || entryTypeUpper === 'SALE_RETURN') {
+      // For SALE and SALE_RETURN, use reg_type
+      if (regTypeUpper === 'R' || regTypeUpper === 'U') {
+        regTypeToUse = regTypeUpper;
+      } else {
+        // If no reg_type provided, use default 'R'
+        regTypeToUse = 'R';
+        console.log(`⚠️ No reg_type provided for ${entryTypeUpper}, defaulting to 'R'`);
+      }
+    } else if (entryTypeUpper === 'PURCHASE' || entryTypeUpper === 'PURCHASE_RETURN') {
+      // For PURCHASE and PURCHASE_RETURN, use purRegType
+      if (purRegTypeUpper === 'R' || purRegTypeUpper === 'U') {
+        regTypeToUse = purRegTypeUpper;
+      } else {
+        // If no purRegType provided, use default 'R'
+        regTypeToUse = 'R';
+        console.log(`⚠️ No purRegType provided for ${entryTypeUpper}, defaulting to 'R'`);
+      }
+    } else {
+      // Unknown entry type
+      regTypeToUse = 'R';
+      console.log(`⚠️ Unknown entryType: ${entryTypeUpper}, defaulting to 'R'`);
+    }
+
+    console.log(`📸 Capturing first weight image for slip: ${slipNo} (${entryTypeUpper} - ${regTypeToUse})`);
 
     const capturedPath = await imageCaptureService.captureFirstWeightImage({
       slipNo,
       cameraIp,
       cameraPort,
-      entryType,
-      purRegType: regType, // ✅ Pass the determined reg type
+      entryType: entryTypeUpper,
+      purRegType: regTypeToUse, // Pass the determined reg type
+      reg_type: regTypeToUse,   // Also pass as reg_type for consistency
       username: "admin",
       password: "admin123",
     });
@@ -2400,8 +2508,8 @@ app.post("/api/capture/first-weight", async (req: Request, res: Response) => {
       imagePath: capturedPath,
       filename: filename,
       slipNo: slipNo,
-      entryType: entryType,
-      regType: regType, // ✅ Return the reg type used
+      entryType: entryTypeUpper,
+      regType: regTypeToUse,
       message: `✅ Image captured successfully`,
     });
 
@@ -2422,26 +2530,55 @@ app.post("/api/capture/second-weight", async (req: Request, res: Response) => {
       cameraIp = "10.10.10.146", 
       cameraPort = 554, 
       entryType = "PURCHASE",
-      purRegType = "REGISTER", // ✅ For PURCHASE
-      reg_type = "REGISTER"    // ✅ For SALE
+      purRegType,    // For PURCHASE
+      reg_type       // For SALE
     } = req.body;
 
     if (!slipNo) {
       return res.status(400).json({ error: "Slip number is required" });
     }
 
-    // ✅ Determine which reg type to use based on entryType
-    const isPurchase = entryType === 'PURCHASE' || entryType === 'PURCHASE_RETURN';
-    const regType = isPurchase ? purRegType : reg_type;
+    // Convert to uppercase
+    const entryTypeUpper = String(entryType).toUpperCase();
+    const regTypeUpper = reg_type ? String(reg_type).toUpperCase() : '';
+    const purRegTypeUpper = purRegType ? String(purRegType).toUpperCase() : '';
 
-    console.log(`📸 Capturing second weight image for slip: ${slipNo} (${entryType} - ${regType})`);
+    // ✅ Determine which reg type to use based on entryType
+    let regTypeToUse = '';
+    
+    if (entryTypeUpper === 'SALE' || entryTypeUpper === 'SALE_RETURN') {
+      // For SALE and SALE_RETURN, use reg_type
+      if (regTypeUpper === 'R' || regTypeUpper === 'U') {
+        regTypeToUse = regTypeUpper;
+      } else {
+        // If no reg_type provided, use default 'R'
+        regTypeToUse = 'R';
+        console.log(`⚠️ No reg_type provided for ${entryTypeUpper}, defaulting to 'R'`);
+      }
+    } else if (entryTypeUpper === 'PURCHASE' || entryTypeUpper === 'PURCHASE_RETURN') {
+      // For PURCHASE and PURCHASE_RETURN, use purRegType
+      if (purRegTypeUpper === 'R' || purRegTypeUpper === 'U') {
+        regTypeToUse = purRegTypeUpper;
+      } else {
+        // If no purRegType provided, use default 'R'
+        regTypeToUse = 'R';
+        console.log(`⚠️ No purRegType provided for ${entryTypeUpper}, defaulting to 'R'`);
+      }
+    } else {
+      // Unknown entry type
+      regTypeToUse = 'R';
+      console.log(`⚠️ Unknown entryType: ${entryTypeUpper}, defaulting to 'R'`);
+    }
+
+    console.log(`📸 Capturing second weight image for slip: ${slipNo} (${entryTypeUpper} - ${regTypeToUse})`);
 
     const capturedPath = await imageCaptureService.captureSecondWeightImage({
       slipNo,
       cameraIp,
       cameraPort,
-      entryType,
-      purRegType: regType, // ✅ Pass the determined reg type
+      entryType: entryTypeUpper,
+      purRegType: regTypeToUse, // Pass the determined reg type
+      reg_type: regTypeToUse,   // Also pass as reg_type for consistency
       username: "admin",
       password: "admin123",
     });
@@ -2453,8 +2590,8 @@ app.post("/api/capture/second-weight", async (req: Request, res: Response) => {
       imagePath: capturedPath,
       filename: filename,
       slipNo: slipNo,
-      entryType: entryType,
-      regType: regType, // ✅ Return the reg type used
+      entryType: entryTypeUpper,
+      regType: regTypeToUse,
       message: `✅ Second weight image captured successfully`,
     });
 
@@ -2470,13 +2607,10 @@ app.post("/api/capture/second-weight", async (req: Request, res: Response) => {
 // ✅ Get First Weight Image - FORCEFULLY filter by reg_type
 app.get("/api/images/first-weight/latest-file", (req: Request, res: Response) => {
   try {
-
-
     console.log("================================");
-console.log("Original URL:", req.originalUrl);
-console.log("Query:", req.query);
-console.log("================================");
-
+    console.log("Original URL:", req.originalUrl);
+    console.log("Query:", req.query);
+    console.log("================================");
 
     const { slipNo, entryType, fiscalYear, purRegType, reg_type } = req.query;
     
@@ -2492,21 +2626,55 @@ console.log("================================");
       return res.status(400).json({ error: "Slip number is required" });
     }
 
-    // ✅ Determine which reg type to use
-    const isPurchase = entryType === 'PURCHASE' || entryType === 'PURCHASE_RETURN';
-    let regType: string | undefined;
+    // Convert to uppercase
+    const entryTypeUpper = entryType ? String(entryType).toUpperCase() : 'PURCHASE';
+    const regTypeUpper = reg_type ? String(reg_type).toUpperCase() : '';
+    const purRegTypeUpper = purRegType ? String(purRegType).toUpperCase() : '';
+
+    // ✅ Determine which reg type to use based on entryType
+    let regTypeToUse: string | undefined;
     
-    if (isPurchase) {
-      regType = purRegType ? String(purRegType) : undefined;
+    if (entryTypeUpper === 'SALE' || entryTypeUpper === 'SALE_RETURN') {
+      // For SALE and SALE_RETURN, use reg_type
+      if (regTypeUpper === 'R' || regTypeUpper === 'U') {
+        regTypeToUse = regTypeUpper;
+      } else {
+        // If no reg_type provided, try to use purRegType (for backward compatibility)
+        if (purRegTypeUpper === 'R' || purRegTypeUpper === 'U') {
+          regTypeToUse = purRegTypeUpper;
+          console.log(`⚠️ Using purRegType=${regTypeToUse} for ${entryTypeUpper} (backward compatibility)`);
+        } else {
+          console.log(`❌ No reg_type provided for ${entryTypeUpper}`);
+          return res.status(400).send(`reg_type is required for ${entryTypeUpper}`);
+        }
+      }
+    } else if (entryTypeUpper === 'PURCHASE' || entryTypeUpper === 'PURCHASE_RETURN') {
+      // For PURCHASE and PURCHASE_RETURN, use purRegType
+      if (purRegTypeUpper === 'R' || purRegTypeUpper === 'U') {
+        regTypeToUse = purRegTypeUpper;
+      } else {
+        // If no purRegType provided, try to use reg_type (for backward compatibility)
+        if (regTypeUpper === 'R' || regTypeUpper === 'U') {
+          regTypeToUse = regTypeUpper;
+          console.log(`⚠️ Using reg_type=${regTypeToUse} for ${entryTypeUpper} (backward compatibility)`);
+        } else {
+          console.log(`❌ No purRegType provided for ${entryTypeUpper}`);
+          return res.status(400).send(`purRegType is required for ${entryTypeUpper}`);
+        }
+      }
     } else {
-      regType = reg_type ? String(reg_type) : undefined;
+      // Unknown entry type - try both
+      if (regTypeUpper === 'R' || regTypeUpper === 'U') {
+        regTypeToUse = regTypeUpper;
+      } else if (purRegTypeUpper === 'R' || purRegTypeUpper === 'U') {
+        regTypeToUse = purRegTypeUpper;
+      } else {
+        console.log(`❌ No reg type provided for ${entryTypeUpper}`);
+        return res.status(400).send(`reg_type or purRegType is required for ${entryTypeUpper}`);
+      }
     }
 
-    // ✅ CRITICAL: If no regType, return error
-    if (!regType) {
-      console.log("❌ No regType provided");
-      return res.status(400).send('regType is required');
-    }
+    console.log(`✅ Using regType: ${regTypeToUse} for ${entryTypeUpper}`);
 
     // Parse fiscal year
     let fiscalYearNum: number | undefined;
@@ -2530,11 +2698,8 @@ console.log("================================");
     console.log(`📁 Found ${files.length} files in first_weight directory`);
 
     // ✅ Build EXACT search pattern
-    const entryTypeUpper = String(entryType).toUpperCase();
-    const regTypeUpper = regType.toUpperCase();
-    
-    // Pattern: slip_1_SALE_UNREGISTER_2027.jpg
-    let searchPattern = `slip_${slipNo}_${entryTypeUpper}_${regTypeUpper}`;
+    const regTypeUpperFinal = regTypeToUse.toUpperCase();
+    let searchPattern = `slip_${slipNo}_${entryTypeUpper}_${regTypeUpperFinal}`;
     if (fiscalYearNum) {
       searchPattern += `_${fiscalYearNum}`;
     }
@@ -2562,8 +2727,8 @@ console.log("================================");
     }
     
     // ✅ NO FALLBACK - return 404
-    console.log(`❌ NO image found for slip ${slipNo} (${entryTypeUpper} - ${regTypeUpper})`);
-    return res.status(404).send(`No image found for slip ${slipNo} (${entryTypeUpper} - ${regTypeUpper})`);
+    console.log(`❌ NO image found for slip ${slipNo} (${entryTypeUpper} - ${regTypeUpperFinal})`);
+    return res.status(404).send(`No image found for slip ${slipNo} (${entryTypeUpper} - ${regTypeUpperFinal})`);
     
   } catch (error: any) {
     console.error("❌ Error fetching image:", error);
@@ -2577,15 +2742,10 @@ console.log("================================");
 // ✅ Get Second Weight Image - FORCEFULLY filter by reg_type
 app.get("/api/images/second-weight/latest-file", (req: Request, res: Response) => {
   try {
-
-
-
     console.log("================================");
-console.log("Original URL:", req.originalUrl);
-console.log("Query:", req.query);
-console.log("================================");
-
-
+    console.log("Original URL:", req.originalUrl);
+    console.log("Query:", req.query);
+    console.log("================================");
 
     const { slipNo, entryType, fiscalYear, purRegType, reg_type } = req.query;
     
@@ -2601,21 +2761,55 @@ console.log("================================");
       return res.status(400).json({ error: "Slip number is required" });
     }
 
-    // ✅ Determine which reg type to use
-    const isPurchase = entryType === 'PURCHASE' || entryType === 'PURCHASE_RETURN';
-    let regType: string | undefined;
+    // Convert to uppercase
+    const entryTypeUpper = entryType ? String(entryType).toUpperCase() : 'PURCHASE';
+    const regTypeUpper = reg_type ? String(reg_type).toUpperCase() : '';
+    const purRegTypeUpper = purRegType ? String(purRegType).toUpperCase() : '';
+
+    // ✅ Determine which reg type to use based on entryType
+    let regTypeToUse: string | undefined;
     
-    if (isPurchase) {
-      regType = purRegType ? String(purRegType) : undefined;
+    if (entryTypeUpper === 'SALE' || entryTypeUpper === 'SALE_RETURN') {
+      // For SALE and SALE_RETURN, use reg_type
+      if (regTypeUpper === 'R' || regTypeUpper === 'U') {
+        regTypeToUse = regTypeUpper;
+      } else {
+        // If no reg_type provided, try to use purRegType (for backward compatibility)
+        if (purRegTypeUpper === 'R' || purRegTypeUpper === 'U') {
+          regTypeToUse = purRegTypeUpper;
+          console.log(`⚠️ Using purRegType=${regTypeToUse} for ${entryTypeUpper} (backward compatibility)`);
+        } else {
+          console.log(`❌ No reg_type provided for ${entryTypeUpper}`);
+          return res.status(400).send(`reg_type is required for ${entryTypeUpper}`);
+        }
+      }
+    } else if (entryTypeUpper === 'PURCHASE' || entryTypeUpper === 'PURCHASE_RETURN') {
+      // For PURCHASE and PURCHASE_RETURN, use purRegType
+      if (purRegTypeUpper === 'R' || purRegTypeUpper === 'U') {
+        regTypeToUse = purRegTypeUpper;
+      } else {
+        // If no purRegType provided, try to use reg_type (for backward compatibility)
+        if (regTypeUpper === 'R' || regTypeUpper === 'U') {
+          regTypeToUse = regTypeUpper;
+          console.log(`⚠️ Using reg_type=${regTypeToUse} for ${entryTypeUpper} (backward compatibility)`);
+        } else {
+          console.log(`❌ No purRegType provided for ${entryTypeUpper}`);
+          return res.status(400).send(`purRegType is required for ${entryTypeUpper}`);
+        }
+      }
     } else {
-      regType = reg_type ? String(reg_type) : undefined;
+      // Unknown entry type - try both
+      if (regTypeUpper === 'R' || regTypeUpper === 'U') {
+        regTypeToUse = regTypeUpper;
+      } else if (purRegTypeUpper === 'R' || purRegTypeUpper === 'U') {
+        regTypeToUse = purRegTypeUpper;
+      } else {
+        console.log(`❌ No reg type provided for ${entryTypeUpper}`);
+        return res.status(400).send(`reg_type or purRegType is required for ${entryTypeUpper}`);
+      }
     }
 
-    // ✅ CRITICAL: If no regType, return error
-    if (!regType) {
-      console.log("❌ No regType provided");
-      return res.status(400).send('regType is required');
-    }
+    console.log(`✅ Using regType: ${regTypeToUse} for ${entryTypeUpper}`);
 
     // Parse fiscal year
     let fiscalYearNum: number | undefined;
@@ -2639,10 +2833,8 @@ console.log("================================");
     console.log(`📁 Found ${files.length} files in second_weight directory`);
 
     // ✅ Build EXACT search pattern
-    const entryTypeUpper = String(entryType).toUpperCase();
-    const regTypeUpper = regType.toUpperCase();
-    
-    let searchPattern = `slip_${slipNo}_${entryTypeUpper}_${regTypeUpper}`;
+    const regTypeUpperFinal = regTypeToUse.toUpperCase();
+    let searchPattern = `slip_${slipNo}_${entryTypeUpper}_${regTypeUpperFinal}`;
     if (fiscalYearNum) {
       searchPattern += `_${fiscalYearNum}`;
     }
@@ -2670,8 +2862,8 @@ console.log("================================");
     }
     
     // ✅ NO FALLBACK - return 404
-    console.log(`❌ NO second image found for slip ${slipNo} (${entryTypeUpper} - ${regTypeUpper})`);
-    return res.status(404).send(`No second image found for slip ${slipNo} (${entryTypeUpper} - ${regTypeUpper})`);
+    console.log(`❌ NO second image found for slip ${slipNo} (${entryTypeUpper} - ${regTypeUpperFinal})`);
+    return res.status(404).send(`No second image found for slip ${slipNo} (${entryTypeUpper} - ${regTypeUpperFinal})`);
     
   } catch (error: any) {
     console.error("❌ Error fetching second image:", error);
@@ -2681,7 +2873,6 @@ console.log("================================");
     });
   }
 });
-
 
 
 
@@ -3103,28 +3294,93 @@ app.get(
 
 
 // GET customers from inv_customers table for dropdown with search, limit, and linked accounts
+// app.get("/api/customers", async (req: Request, res: Response) => {
+//   try {
+//     const { search, limit, branch_id } = req.query;
+//     const queryLimit = limit ? parseInt(limit as string) : 10000000;
+
+//     // ✅ branch_id is required
+//     if (!branch_id) {
+//       return res.status(400).json({
+//         error: "branch_id is required",
+//         message: "Please provide branch_id to fetch customers"
+//       });
+//     }
+
+//     const branchIdNum = Number(branch_id);
+    
+//     // Validate branch_id is a valid number
+//     if (isNaN(branchIdNum)) {
+//       return res.status(400).json({
+//         error: "Invalid branch_id",
+//         message: "branch_id must be a valid number"
+//       });
+//     }
+
+//     let query = `
+//       SELECT 
+//         c.customer_id, 
+//         c.customer_name, 
+//         c.receiveable_account_id,
+//         ca.chart_of_account_code AS receivable_account_code,
+//         ca.description AS receivable_account_desc
+//       FROM inv_customers c
+//       LEFT JOIN chart_of_accounts ca 
+//         ON c.receiveable_account_id = ca.chart_of_account_id
+//       WHERE 
+//         c.customer_name IS NOT NULL 
+//         AND c.customer_name != '' `;
+
+//     const queryParams: any[] = [branchIdNum];
+//     let paramCount = 1;
+
+//     // 🔍 Search filter
+//     if (search && search.toString().trim()) {
+//       paramCount++;
+//       query += ` AND c.customer_name ILIKE $${paramCount}`;
+//       queryParams.push(`%${search}%`);
+//     }
+
+//     // 📊 Order by customer name
+//     query += ` ORDER BY c.customer_name`;
+
+//     // 🔢 Limit
+//     if (queryLimit > 0 && queryLimit !== 10000000) {
+//       paramCount++;
+//       query += ` LIMIT $${paramCount}`;
+//       queryParams.push(queryLimit);
+//     }
+
+//     console.log("🏢 Branch ID:", branchIdNum);
+//     console.log("🧠 Query:", query);
+//     console.log("📦 Params:", queryParams);
+
+//     const result = await pool.query(query, queryParams);
+
+//     // Send response with customer list
+//     res.json({
+//       success: true,
+//       data: result.rows,
+//       count: result.rows.length,
+//       branch_id: branchIdNum
+//     });
+
+//   } catch (error: any) {
+//     console.error("❌ Error fetching customers:", error);
+//     res.status(500).json({ 
+//       success: false,
+//       error: "Failed to fetch customers",
+//       details: error.message 
+//     });
+//   }
+// });
+
+
+
 app.get("/api/customers", async (req: Request, res: Response) => {
   try {
-    const { search, limit, branch_id } = req.query;
+    const { search, limit } = req.query;
     const queryLimit = limit ? parseInt(limit as string) : 10000000;
-
-    // ✅ branch_id is required
-    if (!branch_id) {
-      return res.status(400).json({
-        error: "branch_id is required",
-        message: "Please provide branch_id to fetch customers"
-      });
-    }
-
-    const branchIdNum = Number(branch_id);
-    
-    // Validate branch_id is a valid number
-    if (isNaN(branchIdNum)) {
-      return res.status(400).json({
-        error: "Invalid branch_id",
-        message: "branch_id must be a valid number"
-      });
-    }
 
     let query = `
       SELECT 
@@ -3134,16 +3390,15 @@ app.get("/api/customers", async (req: Request, res: Response) => {
         ca.chart_of_account_code AS receivable_account_code,
         ca.description AS receivable_account_desc
       FROM inv_customers c
-      LEFT JOIN chart_of_accounts ca 
+      LEFT JOIN chart_of_accounts ca
         ON c.receiveable_account_id = ca.chart_of_account_id
-      WHERE 
-        c.customer_name IS NOT NULL 
-        AND c.customer_name != ''
-        AND c.branch_id = $1
+      WHERE
+        c.customer_name IS NOT NULL
+        AND c.customer_name <> ''
     `;
 
-    const queryParams: any[] = [branchIdNum];
-    let paramCount = 1;
+    const queryParams: any[] = [];
+    let paramCount = 0;
 
     // 🔍 Search filter
     if (search && search.toString().trim()) {
@@ -3162,33 +3417,26 @@ app.get("/api/customers", async (req: Request, res: Response) => {
       queryParams.push(queryLimit);
     }
 
-    console.log("🏢 Branch ID:", branchIdNum);
     console.log("🧠 Query:", query);
     console.log("📦 Params:", queryParams);
 
     const result = await pool.query(query, queryParams);
 
-    // Send response with customer list
     res.json({
       success: true,
       data: result.rows,
       count: result.rows.length,
-      branch_id: branchIdNum
     });
 
   } catch (error: any) {
     console.error("❌ Error fetching customers:", error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
       error: "Failed to fetch customers",
-      details: error.message 
+      details: error.message,
     });
   }
 });
-
-
-
-
 
 
 
@@ -3925,16 +4173,68 @@ app.get(
   async (req: Request, res: Response) => {
     try {
       const { slipNo } = req.params;
-      const { entry_type, purRegType } = req.query;
+      const { entry_type, reg_type, pur_reg_type } = req.query;
 
-      // ✅ Fix: Convert purRegType to string safely
-      const purRegTypeStr = purRegType ? String(purRegType) : undefined;
+      // Convert to uppercase strings
+      const entryTypeUpper = entry_type ? String(entry_type).toUpperCase() : '';
+      const regTypeUpper = reg_type ? String(reg_type).toUpperCase() : '';
+      const purRegTypeUpper = pur_reg_type ? String(pur_reg_type).toUpperCase() : '';
 
       let masterQuery;
-      let queryParams;
+      let queryParams = [slipNo];
+
+      // Generate additional WHERE clause based on entry_type
+      let additionalWhereClause = '';
+      
+      if (entryTypeUpper === 'SALE') {
+        if (regTypeUpper === 'R') {
+          additionalWhereClause = `AND wb.reg_type = 'R'`;
+          queryParams.push('R');
+        } else if (regTypeUpper === 'U') {
+          additionalWhereClause = `AND wb.reg_type = 'U'`;
+          queryParams.push('U');
+        } else {
+          additionalWhereClause = ''; // No reg_type filter
+        }
+      } else if (entryTypeUpper === 'PURCHASE') {
+        if (purRegTypeUpper === 'R') {
+          additionalWhereClause = `AND wb.pur_reg_type = 'R'`;
+          queryParams.push('R');
+        } else if (purRegTypeUpper === 'U') {
+          additionalWhereClause = `AND wb.pur_reg_type = 'U'`;
+          queryParams.push('U');
+        } else {
+          additionalWhereClause = ''; // No pur_reg_type filter
+        }
+      } else if (entryTypeUpper === 'PURCHASE_RETURN') {
+        additionalWhereClause = `AND wb.entry_type = 'PURCHASE_RETURN'`;
+        // For purchase return, we might also want to check pur_reg_type
+        if (purRegTypeUpper === 'R') {
+          additionalWhereClause += ` AND wb.pur_reg_type = 'R'`;
+          queryParams.push('R');
+        } else if (purRegTypeUpper === 'U') {
+          additionalWhereClause += ` AND wb.pur_reg_type = 'U'`;
+          queryParams.push('U');
+        }
+      } else if (entryTypeUpper === 'SALE_RETURN') {
+        additionalWhereClause = `AND wb.entry_type = 'SALE_RETURN'`;
+        // For sale return, check reg_type
+        if (regTypeUpper === 'R') {
+          additionalWhereClause += ` AND wb.reg_type = 'R'`;
+          queryParams.push('R');
+        } else if (regTypeUpper === 'U') {
+          additionalWhereClause += ` AND wb.reg_type = 'U'`;
+          queryParams.push('U');
+        }
+      } else {
+        // Default: if entry_type is provided but not in our list
+        if (entryTypeUpper) {
+          additionalWhereClause = `AND wb.entry_type = '${entryTypeUpper}'`;
+        }
+      }
 
       if (entry_type) {
-        // ✅ Find the latest record for this slip number with purRegType filter
+        // Specific entry_type provided
         masterQuery = `
           WITH latest_record AS (
             SELECT 
@@ -3949,7 +4249,7 @@ app.get(
             WHERE wb.slip_no = $1 
               AND wb.entry_type = $2
               AND wb.status <> 'REJECT'
-              ${purRegTypeStr ? `AND wb.pur_reg_type = $3` : ''}
+              ${additionalWhereClause}
             ORDER BY wb.creation_date DESC, wb.wb_id DESC
             LIMIT 1
           ),
@@ -3984,6 +4284,7 @@ app.get(
             wb.created_by,
             wb.second_weight_by,
             wb.creation_date,
+            wb.reg_type,
             wb.pur_reg_type,
             u1.username as created_by_name,
             u2.username as second_weight_by_name
@@ -3994,14 +4295,14 @@ app.get(
           WHERE wb.slip_no = $1 
             AND wb.entry_type = $2
             AND wb.status <> 'REJECT'
-            ${purRegTypeStr ? `AND wb.pur_reg_type = $3` : ''}
+            ${additionalWhereClause}
             AND wb.creation_date::date >= fys.fiscal_start::date
             AND wb.creation_date::date = (
               SELECT MAX(creation_date)::date
               FROM wb_weighbridge 
               WHERE slip_no = $1 
                 AND entry_type = $2
-                ${purRegTypeStr ? `AND pur_reg_type = $3` : ''}
+                ${additionalWhereClause}
                 AND creation_date::date >= fys.fiscal_start::date
                 AND status <> 'REJECT'
             )
@@ -4009,14 +4310,23 @@ app.get(
           LIMIT 1
         `;
         
-        // ✅ Build query parameters with proper types
-        queryParams = [slipNo, entry_type];
-        if (purRegTypeStr) {
-          queryParams.push(purRegTypeStr);
-        }
+        queryParams = [slipNo, entryTypeUpper];
         
       } else {
-        // ✅ For both PURCHASE and PURCHASE_RETURN with purRegType filter
+        // Default: Get both PURCHASE and PURCHASE_RETURN
+        let entryTypeCondition = "(wb.entry_type = 'PURCHASE' OR wb.entry_type = 'PURCHASE_RETURN')";
+        
+        // If pur_reg_type is provided without entry_type
+        if (purRegTypeUpper) {
+          if (purRegTypeUpper === 'R') {
+            additionalWhereClause = `AND wb.pur_reg_type = 'R'`;
+            queryParams.push('R');
+          } else if (purRegTypeUpper === 'U') {
+            additionalWhereClause = `AND wb.pur_reg_type = 'U'`;
+            queryParams.push('U');
+          }
+        }
+        
         masterQuery = `
           WITH latest_record AS (
             SELECT 
@@ -4029,9 +4339,9 @@ app.get(
               END AS fiscal_year
             FROM wb_weighbridge wb
             WHERE wb.slip_no = $1 
-              AND (wb.entry_type = 'PURCHASE' OR wb.entry_type = 'PURCHASE_RETURN')
+              AND ${entryTypeCondition}
               AND wb.status <> 'REJECT'
-              ${purRegTypeStr ? `AND wb.pur_reg_type = $2` : ''}
+              ${additionalWhereClause}
             ORDER BY wb.creation_date DESC, wb.wb_id DESC
             LIMIT 1
           ),
@@ -4066,6 +4376,7 @@ app.get(
             wb.created_by,
             wb.second_weight_by,
             wb.creation_date,
+            wb.reg_type,
             wb.pur_reg_type,
             u1.username as created_by_name,
             u2.username as second_weight_by_name
@@ -4074,16 +4385,16 @@ app.get(
           LEFT JOIN users u2 ON wb.second_weight_by = u2.userid
           CROSS JOIN fiscal_year_start fys
           WHERE wb.slip_no = $1 
-            AND (wb.entry_type = 'PURCHASE' OR wb.entry_type = 'PURCHASE_RETURN')
+            AND ${entryTypeCondition}
             AND wb.status <> 'REJECT'
-            ${purRegTypeStr ? `AND wb.pur_reg_type = $2` : ''}
+            ${additionalWhereClause}
             AND wb.creation_date::date >= fys.fiscal_start::date
             AND wb.creation_date::date = (
               SELECT MAX(creation_date)::date
               FROM wb_weighbridge 
               WHERE slip_no = $1 
-                AND (entry_type = 'PURCHASE' OR entry_type = 'PURCHASE_RETURN')
-                ${purRegTypeStr ? `AND pur_reg_type = $2` : ''}
+                AND ${entryTypeCondition.replace(/wb\./g, '')}
+                ${additionalWhereClause}
                 AND creation_date::date >= fys.fiscal_start::date
                 AND status <> 'REJECT'
             )
@@ -4091,20 +4402,23 @@ app.get(
           LIMIT 1
         `;
         
-        // ✅ Build query parameters with proper types
         queryParams = [slipNo];
-        if (purRegTypeStr) {
-          queryParams.push(purRegTypeStr);
-        }
       }
 
       const masterResult = await pool.query(masterQuery, queryParams);
 
       if (masterResult.rows.length === 0) {
-        const typeMsg = purRegTypeStr ? ` with pur_reg_type '${purRegTypeStr}'` : '';
+        let typeMsg = '';
+        if (entry_type) {
+          typeMsg = ` with entry_type '${entryTypeUpper}'`;
+          if (regTypeUpper) typeMsg += ` and reg_type '${regTypeUpper}'`;
+          if (purRegTypeUpper) typeMsg += ` and pur_reg_type '${purRegTypeUpper}'`;
+        } else if (purRegTypeUpper) {
+          typeMsg = ` with pur_reg_type '${purRegTypeUpper}'`;
+        }
         return res.status(404).json({
           success: false,
-          message: `No PURCHASE record found for slip number ${slipNo}${typeMsg}`,
+          message: `No purchase record found for slip number ${slipNo}${typeMsg}`,
         });
       }
 
@@ -4116,11 +4430,13 @@ app.get(
       `;
       const detailsResult = await pool.query(detailsQuery, [master.wb_id]);
 
-      console.log(`✅ Fetched purchase record for slip ${slipNo}${entry_type ? `, type ${entry_type}` : ""}${purRegTypeStr ? `, purRegType ${purRegTypeStr}` : ""}`);
-      console.log(`   Record date: ${master.creation_date}`);
+      console.log(`✅ Fetched purchase record for slip ${slipNo}`);
+      console.log(`   Entry Type: ${master.entry_type}`);
+      console.log(`   reg_type: ${master.reg_type}`);
       console.log(`   pur_reg_type: ${master.pur_reg_type}`);
-      console.log("   created_by_name:", master.created_by_name);
-      console.log("   second_weight_by_name:", master.second_weight_by_name);
+      console.log(`   Record date: ${master.creation_date}`);
+      console.log(`   created_by_name: ${master.created_by_name}`);
+      console.log(`   second_weight_by_name: ${master.second_weight_by_name}`);
 
       res.json({
         success: true,
@@ -4344,16 +4660,53 @@ app.get(
 app.get("/api/sales/by-slip/:slipNo", async (req: Request, res: Response) => {
   try {
     const { slipNo } = req.params;
-    const { entry_type, reg_type } = req.query; // ✅ Added reg_type
+    const { entry_type, reg_type, pur_reg_type } = req.query;
 
-    // ✅ Convert reg_type to string safely
-    const regTypeStr = reg_type ? String(reg_type) : undefined;
+    // Convert to uppercase strings
+    const entryTypeUpper = entry_type ? String(entry_type).toUpperCase() : '';
+    const regTypeUpper = reg_type ? String(reg_type).toUpperCase() : '';
+    const purRegTypeUpper = pur_reg_type ? String(pur_reg_type).toUpperCase() : '';
 
     let masterQuery;
-    let queryParams;
+    let queryParams = [slipNo];
 
+    // Generate WHERE clause based on entry_type
+    let additionalWhereClause = '';
+    
+    if (entryTypeUpper === 'SALE') {
+      if (regTypeUpper === 'R') {
+        additionalWhereClause = `AND wb.reg_type = 'R'`;
+        queryParams.push('R');
+      } else if (regTypeUpper === 'U') {
+        additionalWhereClause = `AND wb.reg_type = 'U'`;
+        queryParams.push('U');
+      } else {
+        additionalWhereClause = ''; // No reg_type filter
+      }
+    } else if (entryTypeUpper === 'PURCHASE') {
+      if (purRegTypeUpper === 'R') {
+        additionalWhereClause = `AND wb.pur_reg_type = 'R'`;
+        queryParams.push('R');
+      } else if (purRegTypeUpper === 'U') {
+        additionalWhereClause = `AND wb.pur_reg_type = 'U'`;
+        queryParams.push('U');
+      } else {
+        additionalWhereClause = ''; // No pur_reg_type filter
+      }
+    } else if (entryTypeUpper === 'PURCHASE_RETURN') {
+      additionalWhereClause = `AND wb.entry_type = 'PURCHASE_RETURN'`;
+    } else if (entryTypeUpper === 'SALE_RETURN') {
+      additionalWhereClause = `AND wb.entry_type = 'SALE_RETURN'`;
+    } else {
+      // Default: if entry_type is provided, use it directly
+      if (entryTypeUpper) {
+        additionalWhereClause = `AND wb.entry_type = '${entryTypeUpper}'`;
+      }
+    }
+
+    // Build the main query
     if (entry_type) {
-      // ✅ Find the latest record for this slip number with reg_type filter
+      // Specific entry_type provided
       masterQuery = `
         WITH latest_record AS (
           SELECT 
@@ -4368,7 +4721,7 @@ app.get("/api/sales/by-slip/:slipNo", async (req: Request, res: Response) => {
           WHERE wb.slip_no = $1 
             AND wb.entry_type = $2
             AND wb.status <> 'REJECT'
-            ${regTypeStr ? `AND wb.reg_type = $3` : ''}
+            ${additionalWhereClause}
           ORDER BY wb.creation_date DESC, wb.wb_id DESC
           LIMIT 1
         ),
@@ -4391,14 +4744,14 @@ app.get("/api/sales/by-slip/:slipNo", async (req: Request, res: Response) => {
         WHERE wb.slip_no = $1 
           AND wb.entry_type = $2
           AND wb.status <> 'REJECT'
-          ${regTypeStr ? `AND wb.reg_type = $3` : ''}
+          ${additionalWhereClause}
           AND wb.creation_date::date >= fys.fiscal_start::date
           AND wb.creation_date::date = (
             SELECT MAX(creation_date)::date
             FROM wb_weighbridge 
             WHERE slip_no = $1 
               AND entry_type = $2
-              ${regTypeStr ? `AND reg_type = $3` : ''}
+              ${additionalWhereClause}
               AND creation_date::date >= fys.fiscal_start::date
               AND status <> 'REJECT'
           )
@@ -4406,14 +4759,11 @@ app.get("/api/sales/by-slip/:slipNo", async (req: Request, res: Response) => {
         LIMIT 1
       `;
       
-      // ✅ Build query parameters
-      queryParams = [slipNo, entry_type];
-      if (regTypeStr) {
-        queryParams.push(regTypeStr);
-      }
+      // Add entry_type to query parameters
+      queryParams = [slipNo, entryTypeUpper];
       
     } else {
-      // ✅ For SALE only with reg_type filter
+      // Default to SALE if no entry_type provided
       masterQuery = `
         WITH latest_record AS (
           SELECT 
@@ -4428,7 +4778,7 @@ app.get("/api/sales/by-slip/:slipNo", async (req: Request, res: Response) => {
           WHERE wb.slip_no = $1 
             AND wb.entry_type = 'SALE'
             AND wb.status <> 'REJECT'
-            ${regTypeStr ? `AND wb.reg_type = $2` : ''}
+            ${additionalWhereClause}
           ORDER BY wb.creation_date DESC, wb.wb_id DESC
           LIMIT 1
         ),
@@ -4451,14 +4801,14 @@ app.get("/api/sales/by-slip/:slipNo", async (req: Request, res: Response) => {
         WHERE wb.slip_no = $1 
           AND wb.entry_type = 'SALE'
           AND wb.status <> 'REJECT'
-          ${regTypeStr ? `AND wb.reg_type = $2` : ''}
+          ${additionalWhereClause}
           AND wb.creation_date::date >= fys.fiscal_start::date
           AND wb.creation_date::date = (
             SELECT MAX(creation_date)::date
             FROM wb_weighbridge 
             WHERE slip_no = $1 
               AND entry_type = 'SALE'
-              ${regTypeStr ? `AND reg_type = $2` : ''}
+              ${additionalWhereClause}
               AND creation_date::date >= fys.fiscal_start::date
               AND status <> 'REJECT'
           )
@@ -4466,20 +4816,21 @@ app.get("/api/sales/by-slip/:slipNo", async (req: Request, res: Response) => {
         LIMIT 1
       `;
       
-      // ✅ Build query parameters
       queryParams = [slipNo];
-      if (regTypeStr) {
-        queryParams.push(regTypeStr);
-      }
     }
 
     const masterResult = await pool.query(masterQuery, queryParams);
 
     if (masterResult.rows.length === 0) {
-      const typeMsg = regTypeStr ? ` with reg_type '${regTypeStr}'` : '';
+      let typeMsg = '';
+      if (entry_type) {
+        typeMsg = ` with entry_type '${entryTypeUpper}'`;
+        if (regTypeUpper) typeMsg += ` and reg_type '${regTypeUpper}'`;
+        if (purRegTypeUpper) typeMsg += ` and pur_reg_type '${purRegTypeUpper}'`;
+      }
       return res.status(404).json({
         success: false,
-        message: `No SALE record found for slip number ${slipNo}${typeMsg}`,
+        message: `No record found for slip number ${slipNo}${typeMsg}`,
       });
     }
 
@@ -4489,11 +4840,13 @@ app.get("/api/sales/by-slip/:slipNo", async (req: Request, res: Response) => {
       "SELECT * FROM wb_weighbridge_items_purchase WHERE wb_id = $1";
     const detailsResult = await pool.query(detailsQuery, [master.wb_id]);
 
-    console.log(`✅ Fetched sales record for slip ${slipNo}${entry_type ? `, type ${entry_type}` : ""}${regTypeStr ? `, reg_type ${regTypeStr}` : ""}`);
-    console.log(`   Record date: ${master.creation_date}`);
+    console.log(`✅ Fetched record for slip ${slipNo}`);
+    console.log(`   Entry Type: ${master.entry_type}`);
     console.log(`   reg_type: ${master.reg_type}`);
-    console.log("   created_by_name:", master.created_by_name);
-    console.log("   second_weight_by_name:", master.second_weight_by_name);
+    console.log(`   pur_reg_type: ${master.pur_reg_type}`);
+    console.log(`   Record date: ${master.creation_date}`);
+    console.log(`   created_by_name: ${master.created_by_name}`);
+    console.log(`   second_weight_by_name: ${master.second_weight_by_name}`);
 
     res.json({
       success: true,
@@ -4501,10 +4854,10 @@ app.get("/api/sales/by-slip/:slipNo", async (req: Request, res: Response) => {
       details: detailsResult.rows,
     });
   } catch (error: any) {
-    console.error("Error fetching sales by slip number:", error);
+    console.error("Error fetching record by slip number:", error);
     res.status(500).json({
       success: false,
-      error: "Failed to fetch sales record",
+      error: "Failed to fetch record",
       message: error.message
     });
   }
@@ -4753,6 +5106,7 @@ app.put("/api/purchase/update/:wbId", async (req: Request, res: Response) => {
       net_weight = null,
       bardana_weight = null,
       gross_weight = null,
+      gross_wbd = null,
       freight = null,
       remarks = null,
       driver_name = null,
@@ -4780,13 +5134,19 @@ app.put("/api/purchase/update/:wbId", async (req: Request, res: Response) => {
       igp_id = null,
       item_id = null,
       second_weight_by = null,
-      // ⭐ MASTER TABLE FIELDS
-      pur_reg_type = null,      // Purchase module
-      reg_type = null,          // ⭐ NEW: Sale module
+      pur_reg_type = null,
+      reg_type = null,
       bardana_bag = null,
-      // ⭐ DETAILS TABLE FIELD - Database column is 'con'
       con = null,
     } = updateData;
+
+    // ✅ ROUND FUNCTION - Only for values that need rounding
+    const roundValue = (value: any): number | null => {
+      if (value === null || value === undefined || value === '') return null;
+      const num = parseFloat(value);
+      if (isNaN(num)) return null;
+      return Math.round(num);
+    };
 
     const normalizeDateForPostgres = (value: string | null | undefined): string | null => {
       if (!value) return null;
@@ -4818,7 +5178,39 @@ app.put("/api/purchase/update/:wbId", async (req: Request, res: Response) => {
     const slipInTimeForDB = normalizeDateForPostgres(slip_in_time);
     const slipOutTimeForDB = normalizeDateForPostgres(slip_out_time);
 
-    // ⭐ MASTER TABLE UPDATE - Added reg_type
+    // ✅ ROUND ALL WEIGHT VALUES (except weight_per_bags)
+    const roundedFirstWeight = roundValue(first_weight);
+    const roundedSecondWeight = roundValue(second_weight);
+    const roundedNetWeight = roundValue(net_weight);
+    const roundedBardanaWeight = roundValue(bardana_weight);
+    const roundedGrossWeight = roundValue(gross_weight);
+    const roundedGrossWbd = roundValue(gross_wbd);
+    const roundedFreight = roundValue(freight);
+    const roundedSupplierWeight = roundValue(supplier_weight);
+    const roundedPoQty = roundValue(po_qty);
+    const roundedIgpQty = roundValue(igp_qty);
+    const roundedBalanceQty = roundValue(balance_qty);
+    const roundedNoOfBags = roundValue(no_of_bags);
+    const roundedQualityDeduction = roundValue(quality_deduction);
+    
+    // ✅ NO ROUND for weight_per_bags - keep as is
+    const parsedWeightPerBags = weight_per_bags !== null && weight_per_bags !== undefined && weight_per_bags !== ''
+      ? parseFloat(weight_per_bags)
+      : null;
+
+    console.log("🔍 DEBUG - Rounded Values:", {
+      original_bardana_weight: bardana_weight,
+      rounded_bardana_weight: roundedBardanaWeight,
+      original_gross_wbd: gross_wbd,
+      rounded_gross_wbd: roundedGrossWbd,
+      original_weight_per_bags: weight_per_bags,
+      parsed_weight_per_bags: parsedWeightPerBags,  // ✅ No rounding
+    });
+
+    // ✅ Check if slip_out_time is being updated
+    const isSlipOutTimeUpdated = slip_out_time !== null && slip_out_time !== undefined;
+
+    // ⭐ MASTER TABLE UPDATE
     const query = `
       UPDATE wb_weighbridge 
       SET 
@@ -4829,49 +5221,71 @@ app.put("/api/purchase/update/:wbId", async (req: Request, res: Response) => {
         net_weight = $6,
         bardana_weight = $7,
         gross_weight = $8,
-        freight = $9,
-        remarks = $10,
-        driver_name = $11,
-        slip_out_time = (case when slip_out_time is null then $12 else slip_out_time end),
-        online_entry = $13,
-        offline_entry = $14,
-        status = $15,
+        gross_w_b_d = $9,
+        freight = $10,
+        remarks = $11,
+        driver_name = $12,
+        slip_out_time = (case when slip_out_time is null then $13 else slip_out_time end),
+        online_entry = $14,
+        offline_entry = $15,
+        status = $16,
         last_updated_date = CURRENT_TIMESTAMP,
-        second_weight_by = $16,
-        pur_reg_type = $17,
-        reg_type = $18,        -- ⭐ NEW: Sale module
-        bardana_bag = $19
+        second_weight_by = $17,
+        pur_reg_type = $18,
+        reg_type = $19,
+        bardana_bag = $20,
+        new_date_time = CASE 
+                          WHEN $13 IS NOT NULL THEN $13 
+                          ELSE new_date_time 
+                        END
       WHERE wb_id = $1
       RETURNING *;
     `;
 
     const values = [
-      wbId,                     // $1
-      slip_no,                  // $2
-      slipInTimeForDB,          // $3
-      first_weight ? parseFloat(first_weight) : null,  // $4
-      second_weight ? parseFloat(second_weight) : null, // $5
-      net_weight ? parseFloat(net_weight) : null,      // $6
-      bardana_weight ? parseFloat(bardana_weight) : null, // $7
-      gross_weight ? parseFloat(gross_weight) : null,  // $8
-      freight ? parseFloat(freight) : null,            // $9
-      remarks,                  // $10
-      driver_name,              // $11
-      slipOutTimeForDB,         // $12
-      online_entry,             // $13
-      offline_entry,            // $14
-      status,                   // $15
-      second_weight_by,         // $16
-      pur_reg_type,             // $17 - Purchase module
-      reg_type,                 // $18 - ⭐ Sale module
-      bardana_bag               // $19
+      wbId,                           // $1
+      slip_no,                        // $2
+      slipInTimeForDB,                // $3
+      roundedFirstWeight,             // $4
+      roundedSecondWeight,            // $5
+      roundedNetWeight,               // $6
+      roundedBardanaWeight,           // $7
+      roundedGrossWeight,             // $8
+      roundedGrossWbd,                // $9
+      roundedFreight,                 // $10
+      remarks,                        // $11
+      driver_name,                    // $12
+      slipOutTimeForDB,               // $13
+      online_entry,                   // $14
+      offline_entry,                  // $15
+      status,                         // $16
+      second_weight_by,               // $17
+      pur_reg_type,                   // $18
+      reg_type,                       // $19
+      bardana_bag                     // $20
     ];
+
+    console.log("🔍 DEBUG - Update Query Values:", {
+      bardana_weight: values[6],
+      gross_weight: values[7],
+      gross_wbd: values[8],
+      slip_out_time: values[12],
+    });
 
     const result = await pool.query(query, values);
 
     if (result.rows.length === 0) {
       return res.status(404).json({ error: "Purchase record not found" });
     }
+
+    // ✅ Log the updated record
+    console.log("✅ Updated record:", {
+      bardana_weight: result.rows[0].bardana_weight,
+      gross_weight: result.rows[0].gross_weight,
+      gross_w_b_d: result.rows[0].gross_w_b_d,
+      slip_out_time: result.rows[0].slip_out_time,
+      new_date_time: result.rows[0].new_date_time,
+    });
 
     const checkQuery = `SELECT wb_item_p_id, po_no FROM wb_weighbridge_items_purchase WHERE wb_id = $1`;
     const checkResult = await pool.query(checkQuery, [wbId]);
@@ -4881,7 +5295,6 @@ app.put("/api/purchase/update/:wbId", async (req: Request, res: Response) => {
     if (checkResult.rows.length > 0) {
       const existingPoNo = checkResult.rows[0].po_no;
 
-      // ⭐ DETAILS TABLE UPDATE - Use 'con' column
       const detailsQuery = `
         UPDATE wb_weighbridge_items_purchase 
         SET 
@@ -4905,7 +5318,7 @@ app.put("/api/purchase/update/:wbId", async (req: Request, res: Response) => {
           igp_id = $19,
           bardana_weight = $20,
           item_id = $21,
-          con = $22  -- ⭐ Database column is 'con'
+          con = $22
         WHERE wb_id = $1
         RETURNING *;
       `;
@@ -4922,32 +5335,35 @@ app.put("/api/purchase/update/:wbId", async (req: Request, res: Response) => {
         igp_no,
         item_code,
         item_desc,
-        po_qty ? parseFloat(po_qty) : null,
-        igp_qty ? parseFloat(igp_qty) : null,
-        balance_qty ? parseFloat(balance_qty) : null,
+        roundedPoQty,                 // $10
+        roundedIgpQty,                // $11
+        roundedBalanceQty,            // $12
         igp_date,
-        weight_per_bags ? parseFloat(weight_per_bags) : null,
-        no_of_bags ? parseInt(no_of_bags) : null,
+        parsedWeightPerBags,          // $14 ✅ NO ROUNDING
+        roundedNoOfBags,              // $15
         bardana_type,
-        supplier_weight !== undefined && supplier_weight !== null ? parseFloat(supplier_weight) : null,
-        quality_deduction !== undefined && quality_deduction !== null ? parseFloat(quality_deduction) : null,
+        roundedSupplierWeight,        // $17
+        roundedQualityDeduction,      // $18
         igp_id ? parseInt(igp_id) : null,
-        bardana_weight ? parseFloat(bardana_weight) : null,
+        roundedBardanaWeight,         // $20
         item_id ? parseInt(item_id) : null,
-        con  // ⭐ Save to 'con' column
+        con
       ];
 
-      console.log("UPDATE details values:", detailsValues);
+      console.log("UPDATE details values:", {
+        weight_per_bags: detailsValues[13],
+        bardana_weight: detailsValues[19],
+        no_of_bags: detailsValues[14],
+      });
       detailsResult = await pool.query(detailsQuery, detailsValues);
     } else {
-      // ⭐ DETAILS TABLE INSERT - Use 'con' column
       const insertQuery = `
         INSERT INTO wb_weighbridge_items_purchase (
           wb_id, vehicle_no, vendor_name, vendor_id, po_no, po_id, igp_no, 
           item_code, item_desc, po_qty, igp_qty, balance_qty, igp_date, 
           weight_per_bags, no_of_bags, bardana_type, supplier_weight, 
           quality_deduction, igp_id, bardana_weight, item_id,
-          con  -- ⭐ Database column is 'con'
+          con
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
         RETURNING *;
       `;
@@ -4962,24 +5378,34 @@ app.put("/api/purchase/update/:wbId", async (req: Request, res: Response) => {
         igp_no,
         item_code,
         item_desc,
-        po_qty ? parseFloat(po_qty) : null,
-        igp_qty ? parseFloat(igp_qty) : null,
-        balance_qty ? parseFloat(balance_qty) : null,
+        roundedPoQty,                 // $10
+        roundedIgpQty,                // $11
+        roundedBalanceQty,            // $12
         igp_date,
-        weight_per_bags ? parseFloat(weight_per_bags) : null,
-        no_of_bags ? parseInt(no_of_bags) : null,
+        parsedWeightPerBags,          // $14 ✅ NO ROUNDING
+        roundedNoOfBags,              // $15
         bardana_type,
-        supplier_weight ? parseFloat(supplier_weight) : null,
-        quality_deduction ? parseFloat(quality_deduction) : null,
+        roundedSupplierWeight,        // $17
+        roundedQualityDeduction,      // $18
         igp_id ? parseInt(igp_id) : null,
-        bardana_weight ? parseFloat(bardana_weight) : null,
+        roundedBardanaWeight,         // $20
         item_id ? parseInt(item_id) : null,
-        con  // ⭐ Save to 'con' column
+        con
       ];
 
-      console.log("INSERT details values:", insertValues);
+      console.log("INSERT details values:", {
+        weight_per_bags: insertValues[13],
+        bardana_weight: insertValues[19],
+        no_of_bags: insertValues[14],
+      });
       detailsResult = await pool.query(insertQuery, insertValues);
     }
+
+    console.log("✅ Details saved successfully:", {
+      weight_per_bags: detailsResult?.rows[0]?.weight_per_bags,
+      bardana_weight: detailsResult?.rows[0]?.bardana_weight,
+      bardana_type: detailsResult?.rows[0]?.bardana_type,
+    });
 
     res.json({
       success: true,
@@ -5822,59 +6248,35 @@ app.get("/api/purchases/next-slip", async (req, res) => {
     }
 
     try {
-      let whereClause = '';
-      
-      // ✅ SALE with reg_type
-      if (entryTypeUpper === 'SALE' && regTypeUpper) {
-        if (regTypeUpper === 'REGISTER') {
-          whereClause = `entry_type = 'SALE' AND reg_type = 'REGISTER'`;
-        } else if (regTypeUpper === 'UNREGISTER') {
-          whereClause = `entry_type = 'SALE' AND reg_type = 'UNREGISTER'`;
-        } else {
-          whereClause = `entry_type = 'SALE' AND (reg_type IS NULL OR reg_type = '')`;
-        }
-      }
-      // ✅ PURCHASE with pur_reg_type
-      else if (entryTypeUpper === 'PURCHASE' && purRegTypeUpper) {
-        if (purRegTypeUpper === 'REGISTER') {
-          whereClause = `entry_type = 'PURCHASE' AND pur_reg_type = 'REGISTER'`;
-        } else if (purRegTypeUpper === 'UNREGISTER') {
-          whereClause = `entry_type = 'PURCHASE' AND pur_reg_type = 'UNREGISTER'`;
-        } else {
-          whereClause = `entry_type = 'PURCHASE' AND (pur_reg_type IS NULL OR pur_reg_type = '')`;
-        }
-      }
-      // ✅ SALE_REGISTER (old format)
-      else if (entryTypeUpper === 'SALE_REGISTER') {
-        whereClause = `entry_type = 'SALE' AND reg_type = 'REGISTER'`;
-      } 
-      else if (entryTypeUpper === 'SALE_UNREGISTER') {
-        whereClause = `entry_type = 'SALE' AND reg_type = 'UNREGISTER'`;
-      }
-      // ✅ REGISTER (old format)
-      else if (entryTypeUpper === 'REGISTER') {
-        whereClause = `entry_type = 'PURCHASE' AND pur_reg_type = 'REGISTER'`;
-      } 
-      else if (entryTypeUpper === 'UNREGISTER') {
-        whereClause = `entry_type = 'PURCHASE' AND pur_reg_type = 'UNREGISTER'`;
-      }
-      // ✅ SALE (no reg_type)
-      else if (entryTypeUpper === 'SALE') {
-        whereClause = `entry_type = 'SALE' AND (reg_type IS NULL OR reg_type = '')`;
-      }
-      // ✅ PURCHASE (no pur_reg_type)
-      else if (entryTypeUpper === 'PURCHASE') {
-        whereClause = `entry_type = 'PURCHASE' AND (pur_reg_type IS NULL OR pur_reg_type = '')`;
-      }
-      else if (entryTypeUpper === 'PURCHASE_RETURN') {
-        whereClause = `entry_type = 'PURCHASE_RETURN'`;
-      }
-      else if (entryTypeUpper === 'SALE_RETURN') {
-        whereClause = `entry_type = 'SALE_RETURN'`;
-      }
-      else {
-        whereClause = `entry_type = '${entryTypeUpper}'`;
-      }
+     let whereClause = '';
+
+if (entryTypeUpper === 'SALE') {
+  if (regTypeUpper === 'R') {
+    whereClause = `entry_type = 'SALE' AND reg_type = 'R'`;
+  } else if (regTypeUpper === 'U') {
+    whereClause = `entry_type = 'SALE' AND reg_type = 'U'`;
+  } else {
+    whereClause = `entry_type = 'SALE'`;
+  }
+}
+else if (entryTypeUpper === 'PURCHASE') {
+  if (purRegTypeUpper === 'R') {
+    whereClause = `entry_type = 'PURCHASE' AND pur_reg_type = 'R'`;
+  } else if (purRegTypeUpper === 'U') {
+    whereClause = `entry_type = 'PURCHASE' AND pur_reg_type = 'U'`;
+  } else {
+    whereClause = `entry_type = 'PURCHASE'`;
+  }
+}
+else if (entryTypeUpper === 'PURCHASE_RETURN') {
+  whereClause = `entry_type = 'PURCHASE_RETURN'`;
+}
+else if (entryTypeUpper === 'SALE_RETURN') {
+  whereClause = `entry_type = 'SALE_RETURN'`;
+}
+else {
+  whereClause = `entry_type = '${entryTypeUpper}'`;
+}
 
       console.log(`📝 WHERE Clause: ${whereClause}`);
 
@@ -6658,7 +7060,7 @@ app.post("/api/sales-return/save", async (req: Request, res: Response) => {
 
     // Generate WB_ID
     const WB_ID = await generateWBID();
-    const company_id = 4;
+    const company_id = 5;
 
     // ================= MASTER INSERT =================
     const masterQuery = `
@@ -16593,10 +16995,10 @@ app.get('/api/sale-report', async (req: Request, res: Response) => {
     const itemArray = toArray(item as string | undefined);
     const vehicleArray = toArray(vehicle as string | undefined);
 
-    // ✅ --- Sale Report Query (UPDATED with NET_WEIGHT) ---
+    // ✅ --- Sale Report Query (UPDATED with STATUS) ---
     const saleQuery = `
       SELECT 
-        'DNN ' || WB.slip_no AS SLIP_NO,
+        WB.slip_no AS SLIP_NO,
         WEIP.manual_dc_NO,
         WB.slip_in_time,
         WB.slip_out_time,
@@ -16607,9 +17009,24 @@ app.get('/api/sale-report', async (req: Request, res: Response) => {
         WEIP.item_id,
         WEIP.item_code,
         WEIP.dc_qty AS NO_OF_BAGS,
-        WB.net_weight AS NET_WEIGHT,  -- ✅ NEW
-        'MULTAN FEEDS ' AS COMPANY_NAME,
-        WEIP.DC_ID
+        
+        -- ✅ NET_WEIGHT calculation
+        CASE 
+          WHEN WEIP.item_id IN (6517, 5877, 4307) THEN 
+            COALESCE(WB.GROSS_WEIGHT, 0)
+          ELSE 
+            COALESCE(WB.GROSS_w_b_d, 0) 
+        END AS NET_WEIGHT,
+        
+        'MULTAN FEEDS' AS COMPANY_NAME,
+        WEIP.DC_ID,
+        
+        -- ✅ STATUS: Online / Offline
+        CASE 
+          WHEN WB.online_entry = 'Yes' THEN 'Online'
+          WHEN WB.offline_entry = 'Yes' THEN 'Offline'
+          ELSE '-'
+        END AS STATUS
       FROM wb_weighbridge WB
       JOIN WB_WEIGHBRIDGE_ITEMS_HUSS WEIP ON WB.wb_id = WEIP.wb_id
       WHERE WB.status <> 'REJECT'
@@ -16620,8 +17037,8 @@ app.get('/api/sale-report', async (req: Request, res: Response) => {
         AND ($4::text[] IS NULL OR WEIP.item_desc = ANY($4::text[]))
         AND ($5::text[] IS NULL OR WEIP.vehicle_no = ANY($5::text[]))
         AND (COALESCE(WB.slip_out_time, WB.slip_in_time)::date
-             BETWEEN COALESCE($6, COALESCE(WB.slip_out_time, WB.slip_in_time)::date)
-                 AND COALESCE($7, COALESCE(WB.slip_out_time, WB.slip_in_time)::date))
+             BETWEEN COALESCE($6, (COALESCE(WB.slip_out_time, WB.slip_in_time))::date)
+             AND COALESCE($7, (COALESCE(WB.slip_out_time, WB.slip_in_time))::date))
       ORDER BY WEIP.MANUAL_DC_NO, WEIP.DC_ID
     `;
 
@@ -16635,14 +17052,19 @@ app.get('/api/sale-report', async (req: Request, res: Response) => {
       dateTo || null
     ];
 
-    // ✅ --- Bags Summary Query (UPDATED with NET_WEIGHT) ---
+    // ✅ --- Bags Summary Query (UPDATED with STATUS) ---
     const bagsQuery = `
       SELECT 
         WEIP.item_id,
         WEIP.item_code,
         WEIP.item_desc,
         SUM(WEIP.dc_qty) AS BAGS,
-        SUM(WB.net_weight) AS NET_WEIGHT  -- ✅ NEW
+        SUM(CASE 
+          WHEN WEIP.item_id IN (6517, 5877, 4307) THEN 
+            COALESCE(WB.GROSS_WEIGHT, 0)
+          ELSE 
+            COALESCE(WB.GROSS_w_b_d, 0) 
+        END) AS NET_WEIGHT
       FROM wb_weighbridge WB
       JOIN WB_WEIGHBRIDGE_ITEMS_HUSS WEIP ON WB.wb_id = WEIP.wb_id
       WHERE WB.slip_out_time IS NOT NULL
@@ -16664,6 +17086,10 @@ app.get('/api/sale-report', async (req: Request, res: Response) => {
     // Execute both queries
     const saleResult = await pool.query(saleQuery, saleValues);
     const bagsResult = await pool.query(bagsQuery, bagsValues);
+
+    console.log('✅ Sale Report fetched successfully');
+    console.log('📊 Sale records:', saleResult.rows.length);
+    console.log('📊 Bags Summary:', bagsResult.rows.length);
 
     res.json({
       sales: Array.isArray(saleResult.rows) ? saleResult.rows : [],
