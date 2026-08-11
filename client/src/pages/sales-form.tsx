@@ -241,6 +241,7 @@ const fetchReportData = async (wbId: number) => {
         slip_no: raw.slip_no,
         first_weight: raw.first_weight,
         second_weight: raw.second_weight,
+        item_id: raw.item_id,
       });
 
       // ✅ SALE -> reg_type, PURCHASE -> pur_reg_type
@@ -278,6 +279,7 @@ const fetchReportData = async (wbId: number) => {
         second_weight_by: raw.second_weight_by || "",
         reg_type: raw.reg_type,
         pur_reg_type: raw.pur_reg_type,
+        item_id: raw.item_id,
         regType,
       };
     }
@@ -420,16 +422,18 @@ const handlePrintReport = async () => {
       dcQty: row.dc_qty ? String(row.dc_qty) : "",
       doQty: row.do_qty ? String(row.do_qty) : "",
       itemId: row.item_id || null,  // ✅ Added item_id
-    }));
+    }))
+    ;
+    
 
   const vehicleNo = apiData.vehicleNo || apiData.vehicle_no || "";
 
   // ✅ Check if any detail row has specific item_id
-  const specificItemIds = [6517, 5877, 4307];
+  const specificItemIds = ["0501020004", "0501020001", "0501020005"]; // ✅ Add more item_ids as needed
   
   // ✅ Check if ANY row in details has these item_ids
   const hasSpecificItem = (apiData.details || []).some((row: any) => {
-    const itemId = parseInt(row.item_id);
+    const itemId = row.item_code;
     return specificItemIds.includes(itemId);
   });
 
@@ -440,7 +444,7 @@ const handlePrintReport = async () => {
   if (hasSpecificItem) {
     // ✅ If specific item exists, use grossWeight (not netWeight)
     netWeightForReport = apiData.grossWeight || "";
-    console.log("📊 Specific item found - Using grossWeight for Net Weight:", netWeightForReport);
+    console.log( "📊 Specific item found - Using grossWeight for Net Weight:", netWeightForReport);
   } else {
     // ✅ If no specific item, use netWeight
      netWeightForReport = apiData.gross_w_b_d ? String(apiData.gross_w_b_d) : "";
@@ -458,6 +462,7 @@ const handlePrintReport = async () => {
     original_netWeight: apiData.netWeight,
     original_grossWeight: apiData.grossWeight,
     final_netWeight: netWeightForReport,
+    item_id : apiData.item_id,
   });
 
   // ✅ CONDITION: If both weights exist -> generateReportHTML (Full Weighbridge Slip)
@@ -661,7 +666,9 @@ const generateReportHTML = (
             </td>
           </tr>
           <tr><td class="label-cell">Tare Weight:</td><td class="value-cell weight-value">${firstWeight ? parseFloat(firstWeight).toLocaleString("en-IN") : ""}</td></tr>
-          <tr><td class="label-cell">Net Weight:</td><td class="value-cell weight-value">${netWeight ? parseFloat(netWeight).toLocaleString("en-IN") : ""}</td></tr>
+          <tr><td class="label-cell">Net Weight:</td><td class="value-cell weight-value">
+          
+          ${netWeight ? parseFloat(netWeight).toLocaleString("en-IN") : ""}</td></tr>
         </table>
       </div>
       
@@ -3366,7 +3373,7 @@ const handleSave = async () => {
   
 
   // ✅ Force PKT time handling
-  const slipInTime = formData.slipInTime || getPKTDateTime();
+  const slipInTime =  getPKTDateTime();
 
   console.log("formData.slipInTime =", formData.slipInTime);
 console.log("getPKTDateTime() =", getPKTDateTime());

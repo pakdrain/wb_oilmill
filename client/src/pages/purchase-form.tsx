@@ -584,8 +584,19 @@ const loadDataByWbId = useCallback(
       
       if (data && data.master) {
         const master = data.master;
-        const details =
-          data.details && data.details.length > 0 ? data.details[0] : {};
+      const detailsList = Array.isArray(data.details)
+  ? data.details
+  : [];
+
+const details = detailsList[0] || {};
+
+console.log("🔍 FULL DETAILS:", details);
+console.log("🔍 DETAILS LIST:", detailsList);
+console.log("🔍 ITEM CODE:", details.item_code);
+console.log("🔍 ITEM DESC:", details.item_desc);
+
+// ✅ SAVED DETAILS KO TABLE MEIN LOAD KARO
+setIgpItems(detailsList);
 
         console.log("🔍 pur_reg_type from API:", master.pur_reg_type);
         console.log("🔍 entry_type from API:", master.entry_type);
@@ -701,13 +712,13 @@ const loadDataByWbId = useCallback(
           isSecondWeightSaved: !!master.second_weight,
         }));
 
-        // ✅ Debug: Check after setting
-        setTimeout(() => {
-          console.log("📝 After setting formData:");
-          console.log("  purchase:", formData.purchase);
-          console.log("  igpCheckbox:", formData.igpCheckbox);
-          console.log("  pur_reg_type_raw:", master.pur_reg_type);
-        }, 100);
+        // // ✅ Debug: Check after setting
+        // setTimeout(() => {
+        //   console.log("📝 After setting formData:");
+        //   console.log("  purchase:", formData.purchase);
+        //   console.log("  igpCheckbox:", formData.igpCheckbox);
+        //   console.log("  pur_reg_type_raw:", master.pur_reg_type);
+        // }, 100);
 
         setWasOfflineInitially(master.offline_entry === "Yes");
 
@@ -3128,24 +3139,25 @@ const calculateWeights = () => {
   const bardanaWeight = parseFloat(formData.bardanaWeight) || 0;
   const supplierWeight = parseFloat(formData.supplierWeight) || 0;
   const qualityDeduction = parseFloat(formData.qualityDeduction) || 0;
-  const grossWeight = parseFloat(formData.grossWeight) || 0;
 
-  // ✅ Base net weight (Second Weight - First Weight)
-  let baseNetWeight =firstWeight -secondWeight  ;
+  // Base raw weight (1st - 2nd)
+  const baseRawWeight = firstWeight - secondWeight;
   
-  // ✅ If excBags is checked, subtract bardana weight from net weight
   let netWeightRounded;
   let grossWeightRounded;
   
   if (formData.excBags) {
-    netWeightRounded = Math.round(baseNetWeight - bardanaWeight - qualityDeduction);
-    grossWeightRounded = Math.round(baseNetWeight - bardanaWeight);
+    // ✅ Gross Weight = 1st - 2nd - bardana
+    grossWeightRounded = Math.round(baseRawWeight - bardanaWeight);
+    // ✅ Net Weight = 1st - 2nd - bardana - quality
+    netWeightRounded = Math.round(baseRawWeight - bardanaWeight - qualityDeduction);
   } else {
-    netWeightRounded = Math.round(baseNetWeight - qualityDeduction);
-    grossWeightRounded = Math.round(baseNetWeight);
+    // ✅ Gross Weight = 1st - 2nd (bardana included)
+    grossWeightRounded = Math.round(baseRawWeight);
+    // ✅ Net Weight = 1st - 2nd - quality (bardana included)
+    netWeightRounded = Math.round(baseRawWeight - qualityDeduction);
   }
 
-  // ✅ Supplier Weight calculations
   const supplierWeightMinusBardanaRounded = Math.round(supplierWeight - bardanaWeight);
   const supplierWeightMinusOutWeightRounded = Math.round(supplierWeight - (bardanaWeight + grossWeightRounded));
 
@@ -3155,25 +3167,27 @@ const calculateWeights = () => {
     grossWeight: grossWeightRounded.toString(),
     supplierWeightMinusBardana: supplierWeightMinusBardanaRounded.toString(),
     supplierWeightMinusOutWeight: supplierWeightMinusOutWeightRounded.toString(),
-    
-    // DB save ke liye numeric values
     netWeightExact: netWeightRounded,
     grossWeightExact: grossWeightRounded,
   }));
 };
 
-// ✅ Separate useEffect for Gross W.B.D - Independent of excBags
+// ✅ Gross W.B.D = Sirf 1st - 2nd (raw, no bardana deduction)
 useEffect(() => {
-  const grossWeight = parseFloat(formData.grossWeight) || 0;
-  const bardanaWeight = parseFloat(formData.bardanaWeight) || 0;
-  const grossWBD = Math.round(grossWeight + bardanaWeight);
+  const firstWeight = parseFloat(formData.firstWeight) || 0;
+  const secondWeight = parseFloat(formData.secondWeight) || 0;
+  
+  // ✅ Sirf raw calculation - koi deduction nahi
+  const grossWBD = Math.round(firstWeight - secondWeight);
   
   setFormData((prev) => ({
     ...prev,
     grossWBD: grossWBD.toString(),
     grossWBDExact: grossWBD,
   }));
-}, [formData.grossWeight, formData.bardanaWeight]); // ✅ Only depends on grossWeight and bardanaWeight
+}, [formData.firstWeight, formData.secondWeight]); // ✅ Sirf in dono pe depend karein
+
+
 
 // Auto-calculate weights when values change
 useEffect(() => {
@@ -3629,7 +3643,7 @@ if (isEditMode && editingWbId) {
 }
 
     // Time handling
-    let slipInTime = formData.slipInTime || getPKTDateTime();
+    let slipInTime =  getPKTDateTime();
     let slipOutTime = formData.slipOutTime || "";
 
     if (existingRecord) {
@@ -3765,11 +3779,19 @@ console.log("📝 Final PO Data for save:", {
   igp_date: formData.igpDate || null,
   igp_id: igpIdForSave,
   
-  weight_per_bags: formData.wtPerBag &&
-    formData.wtPerBag !== "undefined" &&
-    formData.wtPerBag.trim() !== ""
-    ? parseFloat(formData.wtPerBag)
-    : null,
+// ✅ SAFER APPROACH - Type checking ke saath
+weight_per_bags: (() => {
+  const value = formData.wtPerBag;
+  
+  // Check if value exists and is a string
+  if (value && typeof value === 'string') {
+    const trimmed = value.trim();
+    if (trimmed !== '' && !isNaN(parseFloat(trimmed))) {
+      return parseFloat(trimmed);
+    }
+  }
+  return null;
+})(),
     
   no_of_bags: formData.noOfBags &&
     formData.noOfBags !== "undefined" &&

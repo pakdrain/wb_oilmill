@@ -5091,6 +5091,345 @@ app.get(
 
 
 
+// app.put("/api/purchase/update/:wbId", async (req: Request, res: Response) => {
+//   try {
+//     const { wbId } = req.params;
+//     const updateData = req.body;
+
+//     console.log("Received updateData:", JSON.stringify(updateData, null, 2));
+
+//     const {
+//       slip_no = null,
+//       slip_in_time = null,
+//       first_weight = null,
+//       second_weight = null,
+//       net_weight = null,
+//       bardana_weight = null,
+//       gross_weight = null,
+//       gross_wbd = null,
+//       freight = null,
+//       remarks = null,
+//       driver_name = null,
+//       slip_out_time = null,
+//       online_entry = null,
+//       offline_entry = null,
+//       status = null,
+//       vehicle_no = null,
+//       vendor_name = null,
+//       vendor_id = null,
+//       po_no = null,
+//       po_id = null,
+//       igp_no = null,
+//       item_code = null,
+//       item_desc = null,
+//       po_qty = null,
+//       igp_qty = null,
+//       balance_qty = null,
+//       igp_date = null,
+//       weight_per_bags = null,
+//       no_of_bags = null,
+//       bardana_type = null,
+//       supplier_weight = null,
+//       quality_deduction = null,
+//       igp_id = null,
+//       item_id = null,
+//       second_weight_by = null,
+//       pur_reg_type = null,
+//       reg_type = null,
+//       bardana_bag = null,
+//       con = null,
+//     } = updateData;
+
+//     // ✅ ROUND FUNCTION - Only for values that need rounding
+//     const roundValue = (value: any): number | null => {
+//       if (value === null || value === undefined || value === '') return null;
+//       const num = parseFloat(value);
+//       if (isNaN(num)) return null;
+//       return Math.round(num);
+//     };
+
+//     const normalizeDateForPostgres = (value: string | null | undefined): string | null => {
+//       if (!value) return null;
+
+//       const isoDate = new Date(value);
+//       if (!isNaN(isoDate.getTime())) {
+//         const yyyy = isoDate.getFullYear();
+//         const mm = String(isoDate.getMonth() + 1).padStart(2, '0');
+//         const dd = String(isoDate.getDate()).padStart(2, '0');
+//         const hh = String(isoDate.getHours()).padStart(2, '0');
+//         const mi = String(isoDate.getMinutes()).padStart(2, '0');
+//         const ss = String(isoDate.getSeconds()).padStart(2, '0');
+//         return `${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss}`;
+//       }
+
+//       const ampmRegex = /(\d{2})\/(\d{2})\/(\d{4}) (\d{2}):(\d{2}):(\d{2}) (AM|PM)/i;
+//       const match = value.match(ampmRegex);
+//       if (match) {
+//         let [, month, day, year, hour, minute, second, ampm] = match;
+//         let h = Number(hour);
+//         if (ampm.toUpperCase() === 'PM' && h < 12) h += 12;
+//         if (ampm.toUpperCase() === 'AM' && h === 12) h = 0;
+//         return `${year}-${month.padStart(2,'0')}-${day.padStart(2,'0')} ${h.toString().padStart(2,'0')}:${minute}:${second}`;
+//       }
+
+//       return null;
+//     };
+
+//     const slipInTimeForDB = normalizeDateForPostgres(slip_in_time);
+//     const slipOutTimeForDB = normalizeDateForPostgres(slip_out_time);
+
+//     // ✅ ROUND ALL WEIGHT VALUES (except weight_per_bags)
+//     const roundedFirstWeight = roundValue(first_weight);
+//     const roundedSecondWeight = roundValue(second_weight);
+//     const roundedNetWeight = roundValue(net_weight);
+//     const roundedBardanaWeight = roundValue(bardana_weight);
+//     const roundedGrossWeight = roundValue(gross_weight);
+//     const roundedGrossWbd = roundValue(gross_wbd);
+//     const roundedFreight = roundValue(freight);
+//     const roundedSupplierWeight = roundValue(supplier_weight);
+//     const roundedPoQty = roundValue(po_qty);
+//     const roundedIgpQty = roundValue(igp_qty);
+//     const roundedBalanceQty = roundValue(balance_qty);
+//     const roundedNoOfBags = roundValue(no_of_bags);
+//     const roundedQualityDeduction = roundValue(quality_deduction);
+    
+//     // ✅ NO ROUND for weight_per_bags - keep as is
+//     const parsedWeightPerBags = weight_per_bags !== null && weight_per_bags !== undefined && weight_per_bags !== ''
+//       ? parseFloat(weight_per_bags)
+//       : null;
+
+//     console.log("🔍 DEBUG - Rounded Values:", {
+//       original_bardana_weight: bardana_weight,
+//       rounded_bardana_weight: roundedBardanaWeight,
+//       original_gross_wbd: gross_wbd,
+//       rounded_gross_wbd: roundedGrossWbd,
+//       original_weight_per_bags: weight_per_bags,
+//       parsed_weight_per_bags: parsedWeightPerBags,  // ✅ No rounding
+//     });
+
+//     // ✅ Check if slip_out_time is being updated
+//     const isSlipOutTimeUpdated = slip_out_time !== null && slip_out_time !== undefined;
+
+//     // ⭐ MASTER TABLE UPDATE
+//     const query = `
+//       UPDATE wb_weighbridge 
+//       SET 
+//         slip_no = $2,
+//         slip_in_time = $3,
+//         first_weight = $4,
+//         second_weight = $5,
+//         net_weight = $6,
+//         bardana_weight = $7,
+//         gross_weight = $8,
+//         gross_w_b_d = $9,
+//         freight = $10,
+//         remarks = $11,
+//         driver_name = $12,
+//         slip_out_time = (case when slip_out_time is null then $13 else slip_out_time end),
+//         online_entry = $14,
+//         offline_entry = $15,
+//         status = $16,
+//         last_updated_date = CURRENT_TIMESTAMP,
+//         second_weight_by = $17,
+//         pur_reg_type = $18,
+//         reg_type = $19,
+//         bardana_bag = $20,
+//         new_date_time = CASE 
+//                           WHEN $13 IS NOT NULL THEN $13 
+//                           ELSE new_date_time 
+//                         END
+//       WHERE wb_id = $1
+//       RETURNING *;
+//     `;
+
+//     const values = [
+//       wbId,                           // $1
+//       slip_no,                        // $2
+//       slipInTimeForDB,                // $3
+//       roundedFirstWeight,             // $4
+//       roundedSecondWeight,            // $5
+//       roundedNetWeight,               // $6
+//       roundedBardanaWeight,           // $7
+//       roundedGrossWeight,             // $8
+//       roundedGrossWbd,                // $9
+//       roundedFreight,                 // $10
+//       remarks,                        // $11
+//       driver_name,                    // $12
+//       slipOutTimeForDB,               // $13
+//       online_entry,                   // $14
+//       offline_entry,                  // $15
+//       status,                         // $16
+//       second_weight_by,               // $17
+//       pur_reg_type,                   // $18
+//       reg_type,                       // $19
+//       bardana_bag                     // $20
+//     ];
+
+//     console.log("🔍 DEBUG - Update Query Values:", {
+//       bardana_weight: values[6],
+//       gross_weight: values[7],
+//       gross_wbd: values[8],
+//       slip_out_time: values[12],
+//     });
+
+//     const result = await pool.query(query, values);
+
+//     if (result.rows.length === 0) {
+//       return res.status(404).json({ error: "Purchase record not found" });
+//     }
+
+//     // ✅ Log the updated record
+//     console.log("✅ Updated record:", {
+//       bardana_weight: result.rows[0].bardana_weight,
+//       gross_weight: result.rows[0].gross_weight,
+//       gross_w_b_d: result.rows[0].gross_w_b_d,
+//       slip_out_time: result.rows[0].slip_out_time,
+//       new_date_time: result.rows[0].new_date_time,
+//     });
+
+//     const checkQuery = `SELECT wb_item_p_id, po_no FROM wb_weighbridge_items_purchase WHERE wb_id = $1`;
+//     const checkResult = await pool.query(checkQuery, [wbId]);
+
+//     let detailsResult = null;
+
+//     if (checkResult.rows.length > 0) {
+//       const existingPoNo = checkResult.rows[0].po_no;
+
+//       const detailsQuery = `
+//         UPDATE wb_weighbridge_items_purchase 
+//         SET 
+//           vehicle_no = $2,
+//           vendor_name = $3,
+//           vendor_id = $4,
+//           po_no = $5,
+//           po_id = $6,
+//           igp_no = $7,
+//           item_code = $8,
+//           item_desc = $9,
+//           po_qty = $10,
+//           igp_qty = $11,
+//           balance_qty = $12,
+//           igp_date = $13,
+//           weight_per_bags = $14,
+//           no_of_bags = $15,
+//           bardana_type = $16,
+//           supplier_weight = $17,
+//           quality_deduction = $18,
+//           igp_id = $19,
+//           bardana_weight = $20,
+//           item_id = $21,
+//           con = $22
+//         WHERE wb_id = $1
+//         RETURNING *;
+//       `;
+
+//       const finalPoNo = po_no !== null ? po_no : existingPoNo;
+
+//       const detailsValues = [
+//         wbId,
+//         vehicle_no,
+//         vendor_name,
+//         vendor_id ? parseInt(vendor_id) : null,
+//         finalPoNo,
+//         po_id ? parseInt(po_id) : null,
+//         igp_no,
+//         item_code,
+//         item_desc,
+//         roundedPoQty,                 // $10
+//         roundedIgpQty,                // $11
+//         roundedBalanceQty,            // $12
+//         igp_date,
+//         parsedWeightPerBags,          // $14 ✅ NO ROUNDING
+//         roundedNoOfBags,              // $15
+//         bardana_type,
+//         roundedSupplierWeight,        // $17
+//         roundedQualityDeduction,      // $18
+//         igp_id ? parseInt(igp_id) : null,
+//         roundedBardanaWeight,         // $20
+//         item_id ? parseInt(item_id) : null,
+//         con
+//       ];
+
+//       console.log("UPDATE details values:", {
+//         weight_per_bags: detailsValues[13],
+//         bardana_weight: detailsValues[19],
+//         no_of_bags: detailsValues[14],
+//       });
+//       detailsResult = await pool.query(detailsQuery, detailsValues);
+//     } else {
+//       const insertQuery = `
+//         INSERT INTO wb_weighbridge_items_purchase (
+//           wb_id, vehicle_no, vendor_name, vendor_id, po_no, po_id, igp_no, 
+//           item_code, item_desc, po_qty, igp_qty, balance_qty, igp_date, 
+//           weight_per_bags, no_of_bags, bardana_type, supplier_weight, 
+//           quality_deduction, igp_id, bardana_weight, item_id,
+//           con
+//         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
+//         RETURNING *;
+//       `;
+
+//       const insertValues = [
+//         wbId,
+//         vehicle_no,
+//         vendor_name,
+//         vendor_id ? parseInt(vendor_id) : null,
+//         po_no,
+//         po_id ? parseInt(po_id) : null,
+//         igp_no,
+//         item_code,
+//         item_desc,
+//         roundedPoQty,                 // $10
+//         roundedIgpQty,                // $11
+//         roundedBalanceQty,            // $12
+//         igp_date,
+//         parsedWeightPerBags,          // $14 ✅ NO ROUNDING
+//         roundedNoOfBags,              // $15
+//         bardana_type,
+//         roundedSupplierWeight,        // $17
+//         roundedQualityDeduction,      // $18
+//         igp_id ? parseInt(igp_id) : null,
+//         roundedBardanaWeight,         // $20
+//         item_id ? parseInt(item_id) : null,
+//         con
+//       ];
+
+//       console.log("INSERT details values:", {
+//         weight_per_bags: insertValues[13],
+//         bardana_weight: insertValues[19],
+//         no_of_bags: insertValues[14],
+//       });
+//       detailsResult = await pool.query(insertQuery, insertValues);
+//     }
+
+//     console.log("✅ Details saved successfully:", {
+//       weight_per_bags: detailsResult?.rows[0]?.weight_per_bags,
+//       bardana_weight: detailsResult?.rows[0]?.bardana_weight,
+//       bardana_type: detailsResult?.rows[0]?.bardana_type,
+//     });
+
+//     res.json({
+//       success: true,
+//       message: "Purchase record updated successfully",
+//       data: {
+//         weighbridge: result.rows[0],
+//         purchase_items: detailsResult ? detailsResult.rows[0] : null,
+//         wb_id: wbId,
+//         timestamp: new Date().toISOString()
+//       }
+//     });
+
+//   } catch (error: any) {
+//     console.error("Error updating purchase record:", error);
+//     res.status(500).json({
+//       error: "Failed to update purchase record",
+//       details: error.message,
+//       success: false
+//     });
+//   }
+// });
+
+
+
 app.put("/api/purchase/update/:wbId", async (req: Request, res: Response) => {
   try {
     const { wbId } = req.params;
@@ -5100,7 +5439,7 @@ app.put("/api/purchase/update/:wbId", async (req: Request, res: Response) => {
 
     const {
       slip_no = null,
-      slip_in_time = null,
+      slip_in_time = null,  // ✅ Will be ignored in UPDATE
       first_weight = null,
       second_weight = null,
       net_weight = null,
@@ -5175,7 +5514,7 @@ app.put("/api/purchase/update/:wbId", async (req: Request, res: Response) => {
       return null;
     };
 
-    const slipInTimeForDB = normalizeDateForPostgres(slip_in_time);
+    // ✅ Only normalize slip_out_time (slip_in_time will be ignored)
     const slipOutTimeForDB = normalizeDateForPostgres(slip_out_time);
 
     // ✅ ROUND ALL WEIGHT VALUES (except weight_per_bags)
@@ -5204,72 +5543,115 @@ app.put("/api/purchase/update/:wbId", async (req: Request, res: Response) => {
       original_gross_wbd: gross_wbd,
       rounded_gross_wbd: roundedGrossWbd,
       original_weight_per_bags: weight_per_bags,
-      parsed_weight_per_bags: parsedWeightPerBags,  // ✅ No rounding
+      parsed_weight_per_bags: parsedWeightPerBags,
     });
 
     // ✅ Check if slip_out_time is being updated
     const isSlipOutTimeUpdated = slip_out_time !== null && slip_out_time !== undefined;
 
-    // ⭐ MASTER TABLE UPDATE
+    // ⭐ FIXED: Use COALESCE with explicit casting instead of CASE
+    // const query = `
+    //   UPDATE wb_weighbridge 
+    //   SET 
+    //     slip_no = $2,
+    //     first_weight = $3,
+    //     second_weight = $4,
+    //     net_weight = $5,
+    //     bardana_weight = $6,
+    //     gross_weight = $7,
+    //     gross_w_b_d = $8,
+    //     freight = $9,
+    //     remarks = $10,
+    //     driver_name = $11,
+    //     slip_out_time = COALESCE($12::TIMESTAMP, slip_out_time),
+    //     online_entry = $13,
+    //     offline_entry = $14,
+    //     status = $15,
+    //     last_updated_date = CURRENT_TIMESTAMP,
+    //     second_weight_by = $16,
+    //     pur_reg_type = $17,
+    //     reg_type = $18,
+    //     bardana_bag = $19,
+    //     new_date_time = COALESCE($12::TIMESTAMP, new_date_time)
+    //   WHERE wb_id = $1
+    //   RETURNING *;
+    // `;
+
     const query = `
-      UPDATE wb_weighbridge 
-      SET 
-        slip_no = $2,
-        slip_in_time = $3,
-        first_weight = $4,
-        second_weight = $5,
-        net_weight = $6,
-        bardana_weight = $7,
-        gross_weight = $8,
-        gross_w_b_d = $9,
-        freight = $10,
-        remarks = $11,
-        driver_name = $12,
-        slip_out_time = (case when slip_out_time is null then $13 else slip_out_time end),
-        online_entry = $14,
-        offline_entry = $15,
-        status = $16,
-        last_updated_date = CURRENT_TIMESTAMP,
-        second_weight_by = $17,
-        pur_reg_type = $18,
-        reg_type = $19,
-        bardana_bag = $20,
-        new_date_time = CASE 
-                          WHEN $13 IS NOT NULL THEN $13 
-                          ELSE new_date_time 
-                        END
-      WHERE wb_id = $1
-      RETURNING *;
-    `;
+  UPDATE wb_weighbridge
+  SET
+    slip_no = $2,
+    first_weight = $3,
+    second_weight = $4,
+    net_weight = $5,
+    bardana_weight = $6,
+    gross_weight = $7,
+    gross_w_b_d = $8,
+    freight = $9,
+    remarks = $10,
+    driver_name = $11,
+    slip_out_time = CASE
+                      WHEN slip_out_time IS NULL THEN $12::TIMESTAMP
+                      ELSE slip_out_time
+                    END,
+    online_entry = $13,
+    offline_entry = $14,
+    status = $15,
+    last_updated_date = CURRENT_TIMESTAMP,
+    second_weight_by = $16,
+    pur_reg_type = $17,
+    reg_type = $18,
+    bardana_bag = $19,
+    new_date_time = CASE
+                      WHEN slip_out_time IS NULL THEN $12::TIMESTAMP
+                      ELSE new_date_time
+                    END
+  WHERE wb_id = $1
+  RETURNING *;
+`;
 
     const values = [
       wbId,                           // $1
       slip_no,                        // $2
-      slipInTimeForDB,                // $3
-      roundedFirstWeight,             // $4
-      roundedSecondWeight,            // $5
-      roundedNetWeight,               // $6
-      roundedBardanaWeight,           // $7
-      roundedGrossWeight,             // $8
-      roundedGrossWbd,                // $9
-      roundedFreight,                 // $10
-      remarks,                        // $11
-      driver_name,                    // $12
-      slipOutTimeForDB,               // $13
-      online_entry,                   // $14
-      offline_entry,                  // $15
-      status,                         // $16
-      second_weight_by,               // $17
-      pur_reg_type,                   // $18
-      reg_type,                       // $19
-      bardana_bag                     // $20
+      roundedFirstWeight,             // $3
+      roundedSecondWeight,            // $4
+      roundedNetWeight,               // $5
+      roundedBardanaWeight,           // $6
+      roundedGrossWeight,             // $7
+      roundedGrossWbd,                // $8
+      roundedFreight,                 // $9
+      remarks,                        // $10
+      driver_name,                    // $11
+      slipOutTimeForDB,               // $12 - Explicitly cast to TIMESTAMP in query
+      online_entry,                   // $13
+      offline_entry,                  // $14
+      status,                         // $15
+      second_weight_by,               // $16
+      pur_reg_type,                   // $17
+      reg_type,                       // $18
+      bardana_bag                     // $19
     ];
 
     console.log("🔍 DEBUG - Update Query Values:", {
-      bardana_weight: values[6],
-      gross_weight: values[7],
-      gross_wbd: values[8],
-      slip_out_time: values[12],
+      wbId: values[0],
+      slip_no: values[1],
+      first_weight: values[2],
+      second_weight: values[3],
+      net_weight: values[4],
+      bardana_weight: values[5],
+      gross_weight: values[6],
+      gross_wbd: values[7],
+      freight: values[8],
+      remarks: values[9],
+      driver_name: values[10],
+      slip_out_time: values[11],
+      online_entry: values[12],
+      offline_entry: values[13],
+      status: values[14],
+      second_weight_by: values[15],
+      pur_reg_type: values[16],
+      reg_type: values[17],
+      bardana_bag: values[18],
     });
 
     const result = await pool.query(query, values);
@@ -5280,13 +5662,15 @@ app.put("/api/purchase/update/:wbId", async (req: Request, res: Response) => {
 
     // ✅ Log the updated record
     console.log("✅ Updated record:", {
+      slip_in_time: result.rows[0].slip_in_time,
+      slip_out_time: result.rows[0].slip_out_time,
       bardana_weight: result.rows[0].bardana_weight,
       gross_weight: result.rows[0].gross_weight,
       gross_w_b_d: result.rows[0].gross_w_b_d,
-      slip_out_time: result.rows[0].slip_out_time,
       new_date_time: result.rows[0].new_date_time,
     });
 
+    // ✅ Check if details exist
     const checkQuery = `SELECT wb_item_p_id, po_no FROM wb_weighbridge_items_purchase WHERE wb_id = $1`;
     const checkResult = await pool.query(checkQuery, [wbId]);
 
@@ -5326,28 +5710,28 @@ app.put("/api/purchase/update/:wbId", async (req: Request, res: Response) => {
       const finalPoNo = po_no !== null ? po_no : existingPoNo;
 
       const detailsValues = [
-        wbId,
-        vehicle_no,
-        vendor_name,
-        vendor_id ? parseInt(vendor_id) : null,
-        finalPoNo,
-        po_id ? parseInt(po_id) : null,
-        igp_no,
-        item_code,
-        item_desc,
+        wbId,                         // $1
+        vehicle_no,                   // $2
+        vendor_name,                  // $3
+        vendor_id ? parseInt(vendor_id) : null, // $4
+        finalPoNo,                    // $5
+        po_id ? parseInt(po_id) : null, // $6
+        igp_no,                       // $7
+        item_code,                    // $8
+        item_desc,                    // $9
         roundedPoQty,                 // $10
         roundedIgpQty,                // $11
         roundedBalanceQty,            // $12
-        igp_date,
+        igp_date,                     // $13
         parsedWeightPerBags,          // $14 ✅ NO ROUNDING
         roundedNoOfBags,              // $15
-        bardana_type,
+        bardana_type,                 // $16
         roundedSupplierWeight,        // $17
         roundedQualityDeduction,      // $18
-        igp_id ? parseInt(igp_id) : null,
+        igp_id ? parseInt(igp_id) : null, // $19
         roundedBardanaWeight,         // $20
-        item_id ? parseInt(item_id) : null,
-        con
+        item_id ? parseInt(item_id) : null, // $21
+        con                           // $22
       ];
 
       console.log("UPDATE details values:", {
@@ -5369,28 +5753,28 @@ app.put("/api/purchase/update/:wbId", async (req: Request, res: Response) => {
       `;
 
       const insertValues = [
-        wbId,
-        vehicle_no,
-        vendor_name,
-        vendor_id ? parseInt(vendor_id) : null,
-        po_no,
-        po_id ? parseInt(po_id) : null,
-        igp_no,
-        item_code,
-        item_desc,
+        wbId,                         // $1
+        vehicle_no,                   // $2
+        vendor_name,                  // $3
+        vendor_id ? parseInt(vendor_id) : null, // $4
+        po_no,                        // $5
+        po_id ? parseInt(po_id) : null, // $6
+        igp_no,                       // $7
+        item_code,                    // $8
+        item_desc,                    // $9
         roundedPoQty,                 // $10
         roundedIgpQty,                // $11
         roundedBalanceQty,            // $12
-        igp_date,
+        igp_date,                     // $13
         parsedWeightPerBags,          // $14 ✅ NO ROUNDING
         roundedNoOfBags,              // $15
-        bardana_type,
+        bardana_type,                 // $16
         roundedSupplierWeight,        // $17
         roundedQualityDeduction,      // $18
-        igp_id ? parseInt(igp_id) : null,
+        igp_id ? parseInt(igp_id) : null, // $19
         roundedBardanaWeight,         // $20
-        item_id ? parseInt(item_id) : null,
-        con
+        item_id ? parseInt(item_id) : null, // $21
+        con                           // $22
       ];
 
       console.log("INSERT details values:", {
@@ -5427,8 +5811,6 @@ app.put("/api/purchase/update/:wbId", async (req: Request, res: Response) => {
     });
   }
 });
-
-
 
 app.delete("/api/purchase-items/by-wbid/:wbId", async (req, res) => {
   const { wbId } = req.params;
@@ -16398,6 +16780,8 @@ app.get('/api/purchase-report', async (req, res) => {
     });
   }
 });
+
+
 
 
 // GET API for Accumulated Report
