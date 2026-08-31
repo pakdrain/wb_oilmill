@@ -203,7 +203,7 @@ app.use((req, res, next) => {
   // It is the only port that is not firewalled.
    const port = 5000;
 //const host = '192.168.28.216'; // ← Replace with your actual local IP
-const host = '192.168.20.164'; // ← Replace with your actual local IP
+const host = '192.168.20.180'; // ← Replace with your actual local IP
 
 server.listen(port, host, () => {
   log(`✅ Server running at http://${host}:${port}`);

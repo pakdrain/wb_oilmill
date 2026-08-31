@@ -527,10 +527,10 @@ const [selectedForm, setSelectedForm] = useState<'purchase' | 'sales' | 'offline
         </div>
         <hr style="border: 1px solid #000; margin: 20px 0;" />
 
-         <!-- Feed Mill Copy -->
+         <!-- Oil Mill Copy -->
           <div class="slip">
             <div class="slip-header">
-              <div class="header-left">Feed Mill Copy</div>
+              <div class="header-left">Oil Mill Copy </div>
               <div class="header-center">
                <div class="company-name">Shahzor  Feed  Mill</div>
         <div style="height: 10px;"></div>
@@ -2107,10 +2107,10 @@ const currentTime = new Date().toLocaleTimeString('en-GB', {
         </div>
         <hr style="border: 1px solid #000; margin: 20px 0;" />
 
-         <!-- Feed Mill Copy -->
+         <!-- Oil Mill Copy -->
           <div class="slip">
             <div class="slip-header">
-              <div class="header-left">Feed Mill Copy</div>
+              <div class="header-left">Oil Mill Copy </div>
               <div class="header-center">
                <div class="company-name">Shahzor  Feed  Mill</div>
         <div style="height: 10px;"></div>
@@ -2492,10 +2492,10 @@ const currentTime = new Date().toLocaleTimeString('en-GB', {
         </div>
         <hr style="border: 1px solid #000; margin: 20px 0;" />
 
-         <!-- Feed Mill Copy -->
+         <!-- Oil Mill Copy -->
           <div class="slip">
             <div class="slip-header">
-              <div class="header-left">Feed Mill Copy</div>
+              <div class="header-left">Oil Mill Copy </div>
               <div class="header-center">
                <div class="company-name">Shahzor  Feed  Mill</div>
         <div style="height: 10px;"></div>
@@ -4159,10 +4159,10 @@ export default function SalesForm() {
         </div>
         <hr style="border: 1px solid #000; margin: 20px 0;" />
 
-        <!-- Feed Mill Copy -->
+        <!-- Oil Mill Copy -->
           <div class="slip">
             <div class="slip-header">
-              <div class="header-left">Feed Mill Copy</div>
+              <div class="header-left">Oil Mill Copy </div>
               <div class="header-center">
                <div class="company-name">Shahzor  Feed  Mill</div>
         <div style="height: 10px;"></div>
@@ -5452,10 +5452,10 @@ const fetchDcData = async (dcNo: string, rowIndex: number) => {
           </div>
         </div>
         <hr style="border: 1px solid #000; margin: 20px 0;" />
-   <!-- Feed Mill Copy -->
+   <!-- Oil Mill Copy -->
           <div class="slip">
             <div class="slip-header">
-              <div class="header-left">Feed Mill Copy</div>
+              <div class="header-left">Oil Mill Copy </div>
               <div class="header-center">
                <div class="company-name">Shahzor  Feed  Mill</div>
         <div style="height: 10px;"></div>

@@ -1378,7 +1378,7 @@ const loadDataByWbId = async (wbId: number) => {
         freight: master.freight ? String(master.freight) : "",
         remarks: master.remarks || "",
         driverName: master.driver_name || "",
-        
+         status: master.status || "",
         // ✅ Weight by names (for edit mode)
         created_by_name: master.created_by_name || "",
         second_weight_by_name: master.second_weight_by_name || master.created_by_name || "",
@@ -5285,6 +5285,10 @@ className="border-r border-gray-400 p-1 text-center text-blue-600 truncate w-ful
           className="h-7 text-xs text-black placeholder:text-gray-500 flex-1 max-w-32
             !border !border-gray-400 rounded px-1 
             focus:!border-black"
+            readOnly={
+  formData.isFirstWeightSaved === true && 
+  formData.isSecondWeightSaved === true
+}
         />
       </div>
 
@@ -5352,11 +5356,10 @@ className="border-r border-gray-400 p-1 text-center text-blue-600 truncate w-ful
           className="h-7 text-xs text-black placeholder:text-gray-500 flex-1 max-w-32 
             !border !border-gray-400 rounded px-1 
             focus:!border-black"
-          readOnly={
-            formData.isFirstWeightSaved === true && 
-            formData.isSecondWeightSaved === true && 
-            String(formData.status).trim().toUpperCase() === "ONLINE"
-          }
+         readOnly={
+  formData.isFirstWeightSaved === true && 
+  formData.isSecondWeightSaved === true
+}
         />
       </div>
 
@@ -5368,7 +5371,7 @@ className="border-r border-gray-400 p-1 text-center text-blue-600 truncate w-ful
           name="bardanaWeight"
           value={Math.round(parseFloat(formData.masterBardanaWeight) || 0)}
           onChange={handleChange}
-         // readOnly
+          readOnly
           className={`h-7 text-xs text-black flex-1 max-w-32 
             !border !border-gray-400 rounded px-1 
             focus:!border-black
@@ -5556,22 +5559,16 @@ className="border-r border-gray-400 p-1 text-center text-blue-600 truncate w-ful
 >
     1st WHT
 </Button>
-         <Button
-    className={`h-7 text-xs ${
-        formData.isSecondWeightSaved || 
-        (isEditMode && formData.secondWeight && parseFloat(formData.secondWeight) > 0) ||
-        (!isEditMode && !formData.isFirstWeightSaved)
-            ? "bg-gray-400 cursor-not-allowed"
-            : "bg-green-600 hover:bg-green-700"
-    }`}
-    onClick={captureSecondWeight}
-    disabled={
-        formData.isSecondWeightSaved || 
-        (isEditMode && formData.secondWeight && parseFloat(formData.secondWeight) > 0) ||
-        (!isEditMode && !formData.isFirstWeightSaved)
-    }
+     <Button
+  className={`h-7 text-xs ${
+    (!isEditMode && !formData.isFirstWeightSaved) || formData.isSecondWeightSaved
+      ? "bg-gray-400 cursor-not-allowed"
+      : "bg-green-600 hover:bg-green-700"
+  }`}
+  onClick={captureSecondWeight}
+  disabled={!isEditMode && !formData.isFirstWeightSaved || formData.isSecondWeightSaved}
 >
-    2nd WHT
+  2nd WHT
 </Button>
         </div>
 
@@ -5857,9 +5854,18 @@ className="border-r border-gray-400 p-1 text-center text-blue-600 truncate w-ful
     </div>
   </div>
 
-  {/* Sales Table Body */}
-  <div className="bg-gray-200 mb-4" style={{ height: "200px" }}>
-    {[...Array(4)].map((_, index) => (
+{/* Sales Table Body */}
+<div className="bg-gray-200 mb-4" style={{ height: "200px" }}>
+  {[...Array(4)].map((_, index) => {
+    // ✅ Condition using DB saved flags instead of formData values
+    const shouldDisable = Boolean(
+      isEditMode && 
+      formData.isFirstWeightSaved === true && 
+      formData.isSecondWeightSaved === true && 
+      String(formData.status).trim().toUpperCase() === "ONLINE"
+    );
+
+    return (
       <div
         key={index}
         className="grid gap-px text-xs"
@@ -5873,10 +5879,10 @@ className="border-r border-gray-400 p-1 text-center text-blue-600 truncate w-ful
         <div className="bg-white border border-gray-300 p-1">
           <input
             type="text"
-            className={`w-full h-6 text-xs text-black px-2 border-none bg-transparent focus:outline-none ${
-              (!onlineMode || salesData[index]?.isFetched)
-                ? "bg-gray-100 cursor-not-allowed"
-                : ""
+            className={`w-full h-6 text-xs px-2 border-none bg-transparent focus:outline-none ${
+              shouldDisable || !onlineMode || salesData[index]?.isFetched
+                ? "bg-gray-100 cursor-not-allowed text-gray-500"
+                : "text-black"
             }`}
             value={salesData[index]?.dcNo || ""}
             onChange={(e) =>
@@ -5891,13 +5897,14 @@ className="border-r border-gray-400 p-1 text-center text-blue-600 truncate w-ful
                 }
               }
             }}
-            placeholder={!onlineMode || salesData[index]?.isFetched ? "" : "Press Enter to fetch"}
-            readOnly={!onlineMode || salesData[index]?.isFetched}
+            placeholder={shouldDisable || !onlineMode || salesData[index]?.isFetched ? "" : "Press Enter to fetch"}
+            readOnly={shouldDisable || !onlineMode || salesData[index]?.isFetched}
             autoComplete="off"
             autoCorrect="off"
             autoCapitalize="off"
             spellCheck="false"
             data-form-type="other"
+            disabled={shouldDisable}
           />
         </div>
 
@@ -5905,16 +5912,22 @@ className="border-r border-gray-400 p-1 text-center text-blue-600 truncate w-ful
         <div className="bg-white border border-gray-300 p-1 relative">
           <input
             type="text"
-            className={`w-full h-6 text-xs border-none bg-white text-black cursor-text px-2 ${
-              salesData[index]?.customerId ? "bg-blue-100" : "bg-white"
+            className={`w-full h-6 text-xs border-none cursor-text px-2 ${
+              shouldDisable
+                ? "bg-gray-100 cursor-not-allowed text-gray-500"
+                : salesData[index]?.customerId 
+                  ? "bg-blue-100 text-black" 
+                  : "bg-white text-black"
             }`}
             value={salesData[index]?.customerName || ""}
             onFocus={() => {
+              if (shouldDisable) return;
               setFocusedCustomerRowIndex(index);
               setOpenBranchLovRowIndex(null);
               setOpenItemLovRowIndex(null);
             }}
             onChange={(e) => {
+              if (shouldDisable) return;
               const newData = [...salesData];
               newData[index] = { 
                 ...newData[index], 
@@ -5927,6 +5940,8 @@ className="border-r border-gray-400 p-1 text-center text-blue-600 truncate w-ful
               }
             }}
             onKeyDown={(e) => {
+              if (shouldDisable) return;
+              
               if ((e.ctrlKey && e.key.toLowerCase() === "l") && index === focusedCustomerRowIndex) {
                 e.preventDefault();
                 setOpenCustomerLovRowIndex(index);
@@ -5975,12 +5990,18 @@ className="border-r border-gray-400 p-1 text-center text-blue-600 truncate w-ful
               }
             }}
             autoComplete="off"
+            disabled={shouldDisable}
           />
 
           {/* LOV Open Button */}
           <button
-            className="absolute right-1 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-blue-600"
+            className={`absolute right-1 top-1/2 transform -translate-y-1/2 ${
+              shouldDisable 
+                ? "text-gray-300 cursor-not-allowed" 
+                : "text-gray-500 hover:text-blue-600"
+            }`}
             onClick={(e) => {
+              if (shouldDisable) return;
               e.preventDefault();
               e.stopPropagation();
               if (openCustomerLovRowIndex === index) {
@@ -5997,6 +6018,7 @@ className="border-r border-gray-400 p-1 text-center text-blue-600 truncate w-ful
               }
             }}
             title="Open LOV (Ctrl+L)"
+            disabled={shouldDisable}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -6004,7 +6026,7 @@ className="border-r border-gray-400 p-1 text-center text-blue-600 truncate w-ful
           </button>
 
           {/* Customer LOV Dropdown */}
-          {openCustomerLovRowIndex === index && (
+          {!shouldDisable && openCustomerLovRowIndex === index && (
             <div
               ref={customerLovRef}
               className="absolute z-50 bg-white border border-gray-300 mt-1 w-full shadow-md max-h-48 overflow-y-auto"
@@ -6095,26 +6117,29 @@ className="border-r border-gray-400 p-1 text-center text-blue-600 truncate w-ful
         <div className="bg-white border border-gray-300 p-1">
           <input
             type="text"
-            className={`w-full h-6 text-xs text-black px-2 border-none bg-transparent focus:outline-none ${
-              (onlineMode && salesData[index]?.isFetched) ? "bg-gray-100 cursor-not-allowed" : ""
+            className={`w-full h-6 text-xs px-2 border-none bg-transparent focus:outline-none ${
+              shouldDisable || (onlineMode && salesData[index]?.isFetched)
+                ? "bg-gray-100 cursor-not-allowed text-gray-500" 
+                : "text-black"
             }`}
             value={salesData[index]?.vehicleNo || ""}
             onChange={(e) => {
-              if (onlineMode && salesData[index]?.isFetched) return;
+              if (shouldDisable || (onlineMode && salesData[index]?.isFetched)) return;
               handleSalesDataChange(index, "vehicleNo", e.target.value);
             }}
             autoComplete="off"
             autoCorrect="off"
             autoCapitalize="off"
             spellCheck="false"
-            readOnly={onlineMode && salesData[index]?.isFetched}
+            readOnly={shouldDisable || (onlineMode && salesData[index]?.isFetched)}
             data-form-type="other"
+            disabled={shouldDisable}
           />
         </div>
 
         {/* Item Description */}
         <div className="bg-white border border-gray-300 p-1">
-          {!onlineMode ? (
+          {!shouldDisable && !onlineMode ? (
             <Select
               value={salesData[index]?.itemId?.toString() || "__CUSTOM__"}
               onValueChange={(idStr) => {
@@ -6135,8 +6160,11 @@ className="border-r border-gray-400 p-1 text-center text-blue-600 truncate w-ful
                   setItemSearchQuery("");
                 }
               }}
+              disabled={shouldDisable}
             >
-              <SelectTrigger className="w-full h-6 text-xs border-none bg-transparent focus:ring-0 text-black">
+              <SelectTrigger className={`w-full h-6 text-xs border-none bg-transparent focus:ring-0 ${
+                shouldDisable ? "text-gray-500" : "text-black"
+              }`}>
                 <div className="flex items-center justify-between w-full">
                   <SelectValue placeholder="Select or type new item">
                     {salesData[index]?.itemDescription || ""}
@@ -6204,12 +6232,14 @@ className="border-r border-gray-400 p-1 text-center text-blue-600 truncate w-ful
           ) : (
             <input
               type="text"
-              className={`w-full h-6 text-xs text-black px-2 border-none bg-transparent focus:outline-none ${
-                onlineMode && salesData[index]?.isFetched ? "bg-gray-100 cursor-not-allowed" : ""
+              className={`w-full h-6 text-xs px-2 border-none bg-transparent focus:outline-none ${
+                shouldDisable || (onlineMode && salesData[index]?.isFetched)
+                  ? "bg-gray-100 cursor-not-allowed text-gray-500" 
+                  : "text-black"
               }`}
               value={salesData[index]?.itemDescription || ""}
               onChange={(e) => {
-                if (onlineMode && salesData[index]?.isFetched) return;
+                if (shouldDisable || (onlineMode && salesData[index]?.isFetched)) return;
                 handleSalesDataChange(index, "itemDescription", e.target.value)
               }}
               autoComplete="off"
@@ -6217,92 +6247,84 @@ className="border-r border-gray-400 p-1 text-center text-blue-600 truncate w-ful
               autoCapitalize="off"
               spellCheck="false"
               data-form-type="other"
-              readOnly={onlineMode && salesData[index]?.isFetched}
+              readOnly={shouldDisable || (onlineMode && salesData[index]?.isFetched)}
+              disabled={shouldDisable}
             />
           )}
         </div>
 
         {/* DC Qty - After Item Description */}
-       <div className="bg-white border border-gray-300 p-1">
-  <input
-    type="text"
-    className="w-full h-6 text-xs text-black px-2 border-none bg-transparent focus:outline-none text-right"
-    value={salesData[index]?.dcQty || ""}
-  onChange={(e) => {
-  const newData = [...salesData];
-
-  const dcQty = parseFloat(e.target.value || "0");
-  const wtPerBag = parseFloat(newData[index]?.wtPerBag || "0");
-
-  const bardanaWeight = dcQty * wtPerBag;
-
-  newData[index] = {
-    ...newData[index],
-    dcQty: e.target.value,
-    bardanaWeight: isNaN(bardanaWeight)
-      ? ""
-      : bardanaWeight.toString(),
-  };
-console.log("DC Qty:", dcQty);
-console.log("WPB:", wtPerBag);
-console.log("Bardana Weight:", bardanaWeight);
-
-  setSalesData(newData);
-  setFormData((prev) => ({
-  ...prev,
-  masterBardanaWeight: bardanaWeight.toString(),
-}));
-}}
-
-    autoComplete="off"
-
-    
-  />
-
-  
-</div>
+        <div className="bg-white border border-gray-300 p-1">
+          <input
+            type="text"
+            className={`w-full h-6 text-xs px-2 border-none bg-transparent focus:outline-none text-right ${
+              shouldDisable ? "bg-gray-100 cursor-not-allowed text-gray-500" : "text-black"
+            }`}
+            value={salesData[index]?.dcQty || ""}
+            onChange={(e) => {
+              if (shouldDisable) return;
+              const newData = [...salesData];
+              const dcQty = parseFloat(e.target.value || "0");
+              const wtPerBag = parseFloat(newData[index]?.wtPerBag || "0");
+              const bardanaWeight = dcQty * wtPerBag;
+              newData[index] = {
+                ...newData[index],
+                dcQty: e.target.value,
+                bardanaWeight: isNaN(bardanaWeight)
+                  ? ""
+                  : bardanaWeight.toString(),
+              };
+              console.log("DC Qty:", dcQty);
+              console.log("WPB:", wtPerBag);
+              console.log("Bardana Weight:", bardanaWeight);
+              setSalesData(newData);
+              setFormData((prev) => ({
+                ...prev,
+                masterBardanaWeight: bardanaWeight.toString(),
+              }));
+            }}
+            autoComplete="off"
+            disabled={shouldDisable}
+            readOnly={shouldDisable}
+          />
+        </div>
 
         {/* Bardana Type */}
         <div className="bg-white border border-gray-300 p-1">
           <Select
             value={salesData[index]?.bardanaType || ""}
-          onValueChange={(value) => {
-  const selectedBardana = bardanaTypes.find(
-    (item) => item.type === value
-  );
-
-  const newData = [...salesData];
-
-  const dcQty = parseFloat(newData[index]?.dcQty || "0");
-  const wtPerBag = parseFloat(
-    selectedBardana?.data_config_segment1 || "0"
-  );
-
-  const bardanaWeight = dcQty * wtPerBag;
-
-  newData[index] = {
-    ...newData[index],
-    bardanaType: value,
-    bardanaTypeId: selectedBardana?.data_config_id || null,
-    wtPerBag: selectedBardana?.data_config_segment1 || "",
-    bardanaWeight: bardanaWeight.toString(),
-  };
-
-  console.log("DC Qty:", dcQty);
-  console.log("WPB:", wtPerBag);
-  console.log("Bardana Weight:", bardanaWeight);
-
-  setSalesData(newData);
-
-  setFormData((prev) => ({
-  ...prev,
-  masterBardanaWeight: bardanaWeight.toString(),
-}));
-  setBardanaSelectOpen(false);
-  setBardanaSelectedRow(null);
-}}
+            onValueChange={(value) => {
+              if (shouldDisable) return;
+              const selectedBardana = bardanaTypes.find(
+                (item) => item.type === value
+              );
+              const newData = [...salesData];
+              const dcQty = parseFloat(newData[index]?.dcQty || "0");
+              const wtPerBag = parseFloat(
+                selectedBardana?.data_config_segment1 || "0"
+              );
+              const bardanaWeight = dcQty * wtPerBag;
+              newData[index] = {
+                ...newData[index],
+                bardanaType: value,
+                bardanaTypeId: selectedBardana?.data_config_id || null,
+                wtPerBag: selectedBardana?.data_config_segment1 || "",
+                bardanaWeight: bardanaWeight.toString(),
+              };
+              console.log("DC Qty:", dcQty);
+              console.log("WPB:", wtPerBag);
+              console.log("Bardana Weight:", bardanaWeight);
+              setSalesData(newData);
+              setFormData((prev) => ({
+                ...prev,
+                masterBardanaWeight: bardanaWeight.toString(),
+              }));
+              setBardanaSelectOpen(false);
+              setBardanaSelectedRow(null);
+            }}
             open={bardanaSelectOpen && bardanaSelectedRow === index}
             onOpenChange={(open) => {
+              if (shouldDisable) return;
               setBardanaSelectOpen(open);
               if (open) {
                 setBardanaSelectedRow(index);
@@ -6310,10 +6332,14 @@ console.log("Bardana Weight:", bardanaWeight);
                 setBardanaSelectedRow(null);
               }
             }}
+            disabled={shouldDisable}
           >
             <SelectTrigger 
-              className="w-full h-6 text-xs border-none bg-transparent focus:ring-0 text-black hover:bg-gray-50 focus:bg-gray-50"
+              className={`w-full h-6 text-xs border-none bg-transparent focus:ring-0 ${
+                shouldDisable ? "text-gray-500 cursor-not-allowed" : "text-black hover:bg-gray-50 focus:bg-gray-50"
+              }`}
               onKeyDown={(e) => {
+                if (shouldDisable) return;
                 if (e.key === "Enter") {
                   e.preventDefault();
                   setBardanaSelectOpen(!bardanaSelectOpen);
@@ -6325,6 +6351,7 @@ console.log("Bardana Weight:", bardanaWeight);
                 }
               }}
               onClick={() => {
+                if (shouldDisable) return;
                 setBardanaSelectOpen(!bardanaSelectOpen);
                 if (!bardanaSelectOpen) {
                   setBardanaSelectedRow(index);
@@ -6375,61 +6402,70 @@ console.log("Bardana Weight:", bardanaWeight);
         </div>
      
         {/* WPB - Weight Per Bags */}
-       <div className="bg-white border border-gray-300 p-1">
-  <input
-    type="text"
-    className="w-full h-6 text-xs text-black px-2 border-none bg-transparent focus:outline-none text-right"
-    value={salesData[index]?.wtPerBag || ""}
-   onChange={(e) => {
-  const newData = [...salesData];
+        <div className="bg-white border border-gray-300 p-1">
+          <input
+            type="text"
+            className={`w-full h-6 text-xs px-2 border-none bg-transparent focus:outline-none text-right ${
+              shouldDisable ? "bg-gray-100 cursor-not-allowed text-gray-500" : "text-black"
+            }`}
+            value={salesData[index]?.wtPerBag || ""}
+            onChange={(e) => {
+              if (shouldDisable) return;
+              const newData = [...salesData];
+              const wtPerBag = parseFloat(e.target.value || "0");
+              const dcQty = parseFloat(newData[index]?.dcQty || "0");
+              const bardanaWeight = dcQty * wtPerBag;
+              newData[index] = {
+                ...newData[index],
+                wtPerBag: e.target.value,
+                bardanaWeight: isNaN(bardanaWeight)
+                  ? ""
+                  : bardanaWeight.toString(),
+              };
+              setSalesData(newData);
+              setFormData((prev) => ({
+                ...prev,
+                masterBardanaWeight: bardanaWeight.toString(),
+              }));
+            }}
+            autoComplete="off"
+            disabled={shouldDisable}
+            readOnly={shouldDisable}
+          />
+        </div>
 
-  const wtPerBag = parseFloat(e.target.value || "0");
-  const dcQty = parseFloat(newData[index]?.dcQty || "0");
-
-  const bardanaWeight = dcQty * wtPerBag;
-
-  newData[index] = {
-    ...newData[index],
-    wtPerBag: e.target.value,
-    bardanaWeight: isNaN(bardanaWeight)
-      ? ""
-      : bardanaWeight.toString(),
-  };
-
-  setSalesData(newData);
-  setFormData((prev) => ({
-  ...prev,
-  masterBardanaWeight: bardanaWeight.toString(),
-}));
-}}
-    autoComplete="off"
-  />
-</div>
         {/* Bardana Weight */}
-   <div className="bg-white border border-gray-300 p-1">
-  <input
-    type="text"
-    className="w-full h-6 text-xs text-black px-2 border-none bg-transparent focus:outline-none text-right"
-    value={
-      salesData[index]?.bardanaWeight
-        ? Math.round(parseFloat(salesData[index].bardanaWeight))
-        : ""
-    }
-    readOnly
-    autoComplete="off"
-  />
-</div>
+        <div className="bg-white border border-gray-300 p-1">
+          <input
+            type="text"
+            className={`w-full h-6 text-xs px-2 border-none bg-transparent focus:outline-none text-right ${
+              shouldDisable ? "bg-gray-100 cursor-not-allowed text-gray-500" : "text-black"
+            }`}
+            value={
+              salesData[index]?.bardanaWeight
+                ? Math.round(parseFloat(salesData[index].bardanaWeight))
+                : ""
+            }
+            readOnly
+            autoComplete="off"
+            disabled={shouldDisable}
+          />
+        </div>
+
         {/* Branch - Read-only from master */}
         <div className="bg-white border border-gray-300 p-1">
           <input
             type="text"
-            className="w-full h-6 text-xs text-black px-2 border-none bg-transparent focus:outline-none text-right"
+            className={`w-full h-6 text-xs px-2 border-none bg-transparent focus:outline-none text-right ${
+              shouldDisable ? "bg-gray-100 cursor-not-allowed text-gray-500" : "text-black"
+            }`}
             value={
               branches.find(
                 (b) => b.branch_id.toString() === formData.branchId?.toString()
               )?.branch_name || ""
             }
             readOnly
+            disabled={shouldDisable}
           />
         </div>
 
@@ -6438,15 +6474,21 @@ console.log("Bardana Weight:", bardanaWeight);
           <button
             type="button"
             onClick={() => handleSalesRowDelete(index)}
-            className="text-red-500 hover:text-red-700 text-lg font-bold"
+            className={`text-lg font-bold ${
+              shouldDisable 
+                ? "text-gray-300 cursor-not-allowed" 
+                : "text-red-500 hover:text-red-700"
+            }`}
             title="Delete row"
+            disabled={shouldDisable}
           >
             ✖
           </button>
         </div>
       </div>
-    ))}
-  </div>
+    );
+  })}
+</div>
 
   {/* Total Row */}
   <div

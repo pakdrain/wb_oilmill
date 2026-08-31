@@ -1218,10 +1218,10 @@ const generateReportHTML = (reportData: any = null) => {
       
       <hr style="border: 1px solid #000; margin: 12px 0;" />
       
-      <!-- Feed Mill Copy -->
+      <!-- Oil Mill Copy -->
       <div class="slip">
         <div class="slip-header">
-          <div class="header-left">Feed Mill Copy</div>
+          <div class="header-left">Oil Mill Copy </div>
           <div class="header-center">
             <div class="company-name">Sabirs Vegetable Oils (Pvt.) Ltd.</div>
             <div style="height: 5px;"></div>
@@ -4521,7 +4521,7 @@ if (isEditMode && formData.onlineEntry === "Yes") {
       
       <div class="slip">
         <div class="slip-header">
-          <div class="header-left">Feed Mill Copy</div>
+          <div class="header-left">Oil Mill Copy </div>
           <div class="header-center">
             <div class="company-name">Sabirs Vegetable Oils (Pvt.) Ltd.</div>
             <div style="height: 6px;"></div>
@@ -4578,7 +4578,7 @@ if (isEditMode && formData.onlineEntry === "Yes") {
           </div>
         </div>
         
-        <!-- ✅ Updated Signatures Feed Mill Copy -->
+        <!-- ✅ Updated Signatures Oil Mill Copy -->
         <div class="signatures">
           <div class="signature-block">
             <div style="font-size: 9px; margin-bottom: 1px;">${weightByName}</div>

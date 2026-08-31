@@ -120,21 +120,22 @@ const getNavigation = (isAdmin: boolean) => {
    // { name: "CashReports", href: "/cash-report", icon: BarChart3 },
    // { name: "BankReports", href: "/bank-reports", icon: BarChart3 },
     { name: "General Report", href: "/reportpage", icon: BarChart3 },
-    { name: "Camera Settings", href: "/settings", icon: Settings },
-    {
-      name: "Weighbridge Settings",
-      href: "/weighbridge-settings",
-      icon: Scale,
-    },
+    // { name: "Camera Settings", href: "/settings", icon: Settings },
+    // {
+    //   name: "Weighbridge Settings",
+    //   href: "/weighbridge-settings",
+    //   icon: Scale,
+    // },
   ];
 
-  if (isAdmin) {
-    baseNavigation.splice(-2, 0, {
-      name: "Role",
-      href: "/role-management",
-      icon: Users,
-    });
-  }
+   // ✅ Only add admin-only items if user is admin
+if (isAdmin) {
+  baseNavigation.push(
+    { name: "Camera Settings", href: "/settings", icon: Settings },
+    { name: "Weighbridge Settings", href: "/weighbridge-settings", icon: Scale },
+    { name: "Role", href: "/role-management", icon: Users }
+  );
+}
 
   return baseNavigation;
 };

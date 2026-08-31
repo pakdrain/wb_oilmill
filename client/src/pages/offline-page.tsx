@@ -2374,10 +2374,10 @@ const currentTime = new Date()
           </div>
          </div>
           <hr style="border: 1px solid #000; margin: 20px 0;" />
-           <!-- Feed Mill Copy -->
+           <!-- Oil Mill Copy -->
           <div class="slip">
             <div class="slip-header">
-              <div class="header-left">Feed Mill Copy</div>
+              <div class="header-left">Oil Mill Copy </div>
               <div class="header-center">
                <div class="company-name">MULTAN FEEDS  </div>
         <div style="height: 10px;"></div>
@@ -2966,10 +2966,10 @@ const currentTime = new Date()
       
       <hr style="border: 1px solid #000; margin: 14px 0;" />
       
-      <!-- Feed Mill Copy -->
+      <!-- Oil Mill Copy -->
       <div class="slip">
         <div class="slip-header">
-          <div class="header-left">Feed Mill Copy</div>
+          <div class="header-left">Oil Mill Copy </div>
           <div class="header-center">
             <div class="company-name">Sabirs Vegetable Oils (Pvt.) Ltd.</div>
             <div style="height: 6px;"></div>
@@ -3035,7 +3035,7 @@ const currentTime = new Date()
           </div>
         </div>
         
-        <!-- Signatures for Feed Mill Copy -->
+        <!-- Signatures for Oil Mill Copy -->
         <div class="signatures">
           <div class="signature-block">
             <div style="font-size: 9px; margin-bottom: 1px;">${displayWeightByName}</div>

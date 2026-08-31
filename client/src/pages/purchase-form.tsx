@@ -1378,10 +1378,10 @@ const generateReportHTML = (reportData: any) => {
       
       <hr style="border: 1px solid #000; margin: 14px 0;" />
       
-      <!-- Feed Mill Copy -->
+      <!-- Oil Mill Copy -->
       <div class="slip">
         <div class="slip-header">
-          <div class="header-left">Feed Mill Copy</div>
+          <div class="header-left">Oil Mill Copy </div>
           <div class="header-center">
             <div class="company-name">Sabirs Vegetable Oils (Pvt.) Ltd.</div>
             <div style="height: 6px;"></div>
@@ -1446,7 +1446,7 @@ const generateReportHTML = (reportData: any) => {
           </div>
         </div>
         
-        <!-- Signatures for Feed Mill Copy -->
+        <!-- Signatures for Oil Mill Copy -->
         <div class="signatures">
           <div class="signature-block">
             <div style="font-size: 9px; margin-bottom: 1px;">${weightByName}</div>
@@ -3132,7 +3132,6 @@ const captureSecondWeight = async () => {
 };
 
 // ==============================
-// Auto-calculate weights
 const calculateWeights = () => {
   const firstWeight = parseFloat(formData.firstWeight) || 0;
   const secondWeight = parseFloat(formData.secondWeight) || 0;
@@ -3140,26 +3139,40 @@ const calculateWeights = () => {
   const supplierWeight = parseFloat(formData.supplierWeight) || 0;
   const qualityDeduction = parseFloat(formData.qualityDeduction) || 0;
 
-  // Base raw weight (1st - 2nd)
+  // Base raw weight
   const baseRawWeight = firstWeight - secondWeight;
-  
-  let netWeightRounded;
+
   let grossWeightRounded;
-  
+  let netWeightRounded;
+
   if (formData.excBags) {
-    // ✅ Gross Weight = 1st - 2nd - bardana
-    grossWeightRounded = Math.round(baseRawWeight - bardanaWeight);
-    // ✅ Net Weight = 1st - 2nd - bardana - quality
-    netWeightRounded = Math.round(baseRawWeight - bardanaWeight - qualityDeduction);
+    // Gross Weight = Base Weight - Bardana
+    grossWeightRounded = Math.round(
+      baseRawWeight - bardanaWeight
+    );
+
+    // Net Weight = Gross Weight - Quality Deduction
+    // ❌ Bardana dobara minus nahi hoga
+    netWeightRounded = Math.round(
+      grossWeightRounded - qualityDeduction
+    );
   } else {
-    // ✅ Gross Weight = 1st - 2nd (bardana included)
+    // Gross Weight = Base Weight
     grossWeightRounded = Math.round(baseRawWeight);
-    // ✅ Net Weight = 1st - 2nd - quality (bardana included)
-    netWeightRounded = Math.round(baseRawWeight - qualityDeduction);
+
+    // Net Weight = Gross Weight - Quality Deduction
+    netWeightRounded = Math.round(
+      grossWeightRounded - qualityDeduction
+    );
   }
 
-  const supplierWeightMinusBardanaRounded = Math.round(supplierWeight - bardanaWeight);
-  const supplierWeightMinusOutWeightRounded = Math.round(supplierWeight - (bardanaWeight + grossWeightRounded));
+  const supplierWeightMinusBardanaRounded = Math.round(
+    supplierWeight - bardanaWeight
+  );
+
+  const supplierWeightMinusOutWeightRounded = Math.round(
+    supplierWeight - grossWeightRounded
+  );
 
   setFormData((prev) => ({
     ...prev,
@@ -3779,19 +3792,12 @@ console.log("📝 Final PO Data for save:", {
   igp_date: formData.igpDate || null,
   igp_id: igpIdForSave,
   
-// ✅ SAFER APPROACH - Type checking ke saath
-weight_per_bags: (() => {
-  const value = formData.wtPerBag;
-  
-  // Check if value exists and is a string
-  if (value && typeof value === 'string') {
-    const trimmed = value.trim();
-    if (trimmed !== '' && !isNaN(parseFloat(trimmed))) {
-      return parseFloat(trimmed);
-    }
-  }
-  return null;
-})(),
+    "weight_per_bags": (formData.wtPerBag !== undefined && 
+                    formData.wtPerBag !== null &&
+                    formData.wtPerBag !== "undefined" &&
+                    formData.wtPerBag.toString().trim() !== "")
+  ? parseFloat(formData.wtPerBag)
+  : null,
     
   no_of_bags: formData.noOfBags &&
     formData.noOfBags !== "undefined" &&
@@ -5109,10 +5115,10 @@ const generateAndPrintReport = (apiData: any) => {
       
       <hr style="border: 1px solid #000; margin: 20px 0;" />
       
-      <!-- Feed Mill Copy -->
+      <!-- Oil Mill Copy -->
       <div class="slip">
         <div class="slip-header">
-          <div class="header-left">Feed Mill Copy</div>
+          <div class="header-left">Oil Mill Copy </div>
           <div class="header-center">
             <div class="company-name">Sabirs Vegetable Oils (Pvt.) Ltd.</div>
             <div style="height: 10px;"></div>
@@ -6128,6 +6134,7 @@ className="border-r border-gray-400 p-1 text-center text-blue-600 truncate w-ful
           name="supplierWeight"
           value={formData.supplierWeight || ''}
           onChange={handleChange}
+           readOnly
           className="h-7 text-xs text-black placeholder:text-gray-500 flex-1 max-w-32
             !border !border-gray-400 rounded px-1 
             focus:!border-black"
@@ -6165,7 +6172,7 @@ className="border-r border-gray-400 p-1 text-center text-blue-600 truncate w-ful
           name="firstWeight"
           value={formData.firstWeight}
           onChange={handleChange}
-          readOnly
+         readOnly
           className={`h-7 text-xs flex-1 max-w-32 text-black 
             !border !border-gray-400 rounded px-1 
             focus:!border-black
@@ -6201,11 +6208,7 @@ className="border-r border-gray-400 p-1 text-center text-blue-600 truncate w-ful
       className="h-7 text-xs text-black placeholder:text-gray-500 flex-1 max-w-32 
         !border !border-gray-400 rounded px-1 
         focus:!border-black"
-      readOnly={
-        formData.isFirstWeightSaved === true && 
-        formData.isSecondWeightSaved === true && 
-        String(formData.status).trim().toUpperCase() === "ONLINE"
-      }
+      readOnly
     />
   </div>
 
@@ -6435,22 +6438,16 @@ className="border-r border-gray-400 p-1 text-center text-blue-600 truncate w-ful
             1st WHT
           </Button>
 
-        <Button
-    className={`h-7 text-xs ${
-        formData.isSecondWeightSaved || 
-        (isEditMode && formData.secondWeight && parseFloat(formData.secondWeight) > 0) ||
-        (!isEditMode && !formData.isFirstWeightSaved)
-            ? "bg-gray-400 cursor-not-allowed"
-            : "bg-green-600 hover:bg-green-700"
-    }`}
-    onClick={captureSecondWeight}
-    disabled={
-        formData.isSecondWeightSaved || 
-        (isEditMode && formData.secondWeight && parseFloat(formData.secondWeight) > 0) ||
-        (!isEditMode && !formData.isFirstWeightSaved)
-    }
+    <Button
+  className={`h-7 text-xs ${
+    (!isEditMode && !formData.isFirstWeightSaved) || formData.isSecondWeightSaved
+      ? "bg-gray-400 cursor-not-allowed"
+      : "bg-green-600 hover:bg-green-700"
+  }`}
+  onClick={captureSecondWeight}
+  disabled={!isEditMode && !formData.isFirstWeightSaved || formData.isSecondWeightSaved}
 >
-    2nd WHT
+  2nd WHT
 </Button>
         </div>
 
@@ -6570,12 +6567,19 @@ className="border-r border-gray-400 p-1 text-center text-blue-600 truncate w-ful
         {/* First Column */}
         <div className="flex flex-col gap-1.5">
           {/* Bardana Type */}
-                <div className="flex items-center gap-1">
+<div className="flex items-center gap-1">
   <span className="text-xs text-black w-20">Bardana Type</span>
 
   <Select
     name="bardanaType"
     value={formData.bardanaType || ""}
+    disabled={
+      isEditMode && 
+      formData.firstWeight && 
+      formData.secondWeight && 
+      formData.firstWeight !== "" && 
+      formData.secondWeight !== ""
+    }
     onValueChange={(value) => {
       const selectedBardana = bardanaTypes.find(
         (item) => item.type === value
@@ -6604,9 +6608,13 @@ className="border-r border-gray-400 p-1 text-center text-blue-600 truncate w-ful
   >
     <SelectTrigger
       ref={bardanaSelectRef}
-     className="h-7 text-xs text-black w-36 
-           !border !border-gray-400 rounded px-1 
-           focus:!border-black"
+      className={`h-7 text-xs text-black w-36 
+        !border !border-gray-400 rounded px-1 
+        focus:!border-black
+        ${(isEditMode && formData.firstWeight && formData.secondWeight && formData.firstWeight !== "" && formData.secondWeight !== "") 
+          ? "!bg-gray-100 !text-gray-500 cursor-not-allowed opacity-60" 
+          : ""
+        }`}
       onFocus={() => setActiveLOV("bardana")}
     >
       <SelectValue
@@ -6873,7 +6881,18 @@ className="border-r border-gray-400 p-1 text-center text-blue-600 truncate w-ful
         }));
       }}
       placeholder="Type or select vendor..."
-      className="h-7 text-xs text-black w-full pr-8 border border-gray-400 rounded px-1"
+      className={`h-7 text-xs w-full pr-8 border border-gray-400 rounded px-1
+        ${(isEditMode && formData.firstWeight && formData.secondWeight && formData.firstWeight !== "" && formData.secondWeight !== "") 
+          ? "!bg-gray-100 !text-gray-500 cursor-not-allowed" 
+          : "text-black"
+        }`}
+      disabled={
+        isEditMode && 
+        formData.firstWeight && 
+        formData.secondWeight && 
+        formData.firstWeight !== "" && 
+        formData.secondWeight !== ""
+      }
     />
 
     <div className="absolute top-0 right-0 h-full">
@@ -6904,8 +6923,21 @@ className="border-r border-gray-400 p-1 text-center text-blue-600 truncate w-ful
             vehicleNoInput?.select();
           }, 50);
         }}
+        disabled={
+          isEditMode && 
+          formData.firstWeight && 
+          formData.secondWeight && 
+          formData.firstWeight !== "" && 
+          formData.secondWeight !== ""
+        }
       >
-        <SelectTrigger className="h-7 w-8 px-0 border-l border-gray-400 rounded-l-none rounded-r flex items-center justify-center">
+        <SelectTrigger 
+          className={`h-7 w-8 px-0 border-l border-gray-400 rounded-l-none rounded-r flex items-center justify-center
+            ${(isEditMode && formData.firstWeight && formData.secondWeight && formData.firstWeight !== "" && formData.secondWeight !== "") 
+              ? "!bg-gray-100 !text-gray-500 cursor-not-allowed opacity-60" 
+              : ""
+            }`}
+        >
           ▼
         </SelectTrigger>
 
@@ -7231,21 +7263,31 @@ className="border-r border-gray-400 p-1 text-center text-blue-600 truncate w-ful
                 return (
                   <tr key={index}>
                     {/* PO No - editable in edit mode */}
-                    <td className="border p-1 h-4 text-xs text-black">
-                      {isEditingRow ? (
-                      <Input
-                        autoComplete="off"
-  ref={poNoRef}
-  name="poNo"
-  value={formData.poNo}
-  onChange={handleChange}
-  className="h-7 text-xs text-black w-full"
-/>
-
-                      ) : (
-                        item.po_no || ""
-                      )}
-                    </td>
+                   <td className="border p-1 h-4 text-xs text-black">
+  {isEditingRow ? (
+    <Input
+      autoComplete="off"
+      ref={poNoRef}
+      name="poNo"
+      value={formData.poNo}
+      onChange={handleChange}
+      className={`h-7 text-xs w-full
+        ${(isEditMode && formData.firstWeight && formData.secondWeight && formData.firstWeight !== "" && formData.secondWeight !== "") 
+          ? "!bg-gray-100 !text-gray-500 cursor-not-allowed" 
+          : "text-black"
+        }`}
+      disabled={
+        isEditMode && 
+        formData.firstWeight && 
+        formData.secondWeight && 
+        formData.firstWeight !== "" && 
+        formData.secondWeight !== ""
+      }
+    />
+  ) : (
+    item.po_no || ""
+  )}
+</td>
 
                     {/* Item Code - editable dropdown in edit mode */}
                   <td className="border p-1 h-4 text-xs text-black">
@@ -7369,55 +7411,88 @@ className="border-r border-gray-400 p-1 text-center text-blue-600 truncate w-ful
                       )}
                     </td>
 
-                    {/* PO Quantity - editable in edit mode */}
-                    <td className="border p-1 h-4 text-xs text-black">
-                      {isEditingRow ? (
-                        <Input
-                          name="poQty"
-                          value={formData.poQty}
-                          onChange={handleChange}
-                          className="h-4 text-xs text-black w-full border-none bg-transparent"
-                          placeholder="PO Qty"
-                         // type="number"
-                        />
-                      ) : (
-                        poQty.toFixed(2)
-                      )}
-                    </td>
+                  {/* PO Quantity - editable in edit mode */}
+<td className="border p-1 h-4 text-xs text-black">
+  {isEditingRow ? (
+    <Input
+      name="poQty"
+      value={formData.poQty}
+      onChange={handleChange}
+      className={`h-4 text-xs w-full border-none bg-transparent
+        ${(isEditMode && formData.firstWeight && formData.secondWeight && formData.firstWeight !== "" && formData.secondWeight !== "") 
+          ? "!bg-gray-100 !text-gray-500 cursor-not-allowed opacity-60" 
+          : "text-black"
+        }`}
+      placeholder="PO Qty"
+      disabled={
+        isEditMode && 
+        formData.firstWeight && 
+        formData.secondWeight && 
+        formData.firstWeight !== "" && 
+        formData.secondWeight !== ""
+      }
+      // type="number"
+    />
+  ) : (
+    poQty.toFixed(2)
+  )}
+</td>
 
-                    {/* IGP Quantity - editable in edit mode */}
-                    <td className="border p-1 h-4 text-xs text-black">
-                      {isEditingRow ? (
-                        <Input
-                          autoComplete="off"
-                          name="igpQty"
-                          value={formData.igpQty}
-                          onChange={handleChange}
-                          className="h-4 text-xs text-black w-full border-none bg-transparent"
-                          placeholder="IGP Qty"
-                          //type="number"
-                        />
-                      ) : (
-                        igpQty.toFixed(2)
-                      )}
-                    </td>
+{/* IGP Quantity - editable in edit mode */}
+<td className="border p-1 h-4 text-xs text-black">
+  {isEditingRow ? (
+    <Input
+      autoComplete="off"
+      name="igpQty"
+      value={formData.igpQty}
+      onChange={handleChange}
+      className={`h-4 text-xs w-full border-none bg-transparent
+        ${(isEditMode && formData.firstWeight && formData.secondWeight && formData.firstWeight !== "" && formData.secondWeight !== "") 
+          ? "!bg-gray-100 !text-gray-500 cursor-not-allowed opacity-60" 
+          : "text-black"
+        }`}
+      placeholder="IGP Qty"
+      disabled={
+        isEditMode && 
+        formData.firstWeight && 
+        formData.secondWeight && 
+        formData.firstWeight !== "" && 
+        formData.secondWeight !== ""
+      }
+      //type="number"
+    />
+  ) : (
+    igpQty.toFixed(2)
+  )}
+</td>
 
-                    {/* Balance Quantity - editable in edit mode */}
-                    <td className="border p-1 h-4 text-xs text-black">
-                      {isEditingRow ? (
-                        <Input
-                          autoComplete="off"
-                          name="balanceQty"
-                          value={formData.balanceQty}
-                          onChange={handleChange}
-                          className="h-4 text-xs text-black w-full border-none bg-transparent"
-                          placeholder="Balance"
-                         // type="number"
-                        />
-                      ) : (
-                        balanceQty.toFixed(2)
-                      )}
-                    </td>
+{/* Balance Quantity - editable in edit mode */}
+<td className="border p-1 h-4 text-xs text-black">
+  {isEditingRow ? (
+    <Input
+      autoComplete="off"
+      name="balanceQty"
+      value={formData.balanceQty}
+      onChange={handleChange}
+      className={`h-4 text-xs w-full border-none bg-transparent
+        ${(isEditMode && formData.firstWeight && formData.secondWeight && formData.firstWeight !== "" && formData.secondWeight !== "") 
+          ? "!bg-gray-100 !text-gray-500 cursor-not-allowed opacity-60" 
+          : "text-black"
+        }`}
+      placeholder="Balance"
+      disabled={
+        isEditMode && 
+        formData.firstWeight && 
+        formData.secondWeight && 
+        formData.firstWeight !== "" && 
+        formData.secondWeight !== ""
+      }
+      // type="number"
+    />
+  ) : (
+    balanceQty.toFixed(2)
+  )}
+</td>
                   </tr>
                 );
               })

@@ -2346,7 +2346,7 @@ const generateSaleReportHTML = (
   <td></td>
 </tr>`;
 
-  // ✅ Bags Summary with Net Weight
+  // ✅ Bags Summary with Net Weight (No commas in Net Weight)
   const mappedBagsSummary = bagsSummary.map(item => ({
     item_desc: item.item_desc || 'Unknown',
     BAGS: Number(item.BAGS ?? 0),
@@ -2359,7 +2359,7 @@ const generateSaleReportHTML = (
 <tr>
   <td>${item.item_desc}</td>
   <td>${item.BAGS}</td>
-  <td>${item.NET_WEIGHT.toLocaleString('en-IN')}</td>
+  <td>${item.NET_WEIGHT}</td>   <!-- ✅ Removed .toLocaleString('en-IN') -->
 </tr>`;
   });
 
@@ -2438,7 +2438,7 @@ ${mappedBagsSummary.length ? `
   <tr>
     <td><b>Total</b></td>
     <td><b>${totalBagsSummary}</b></td>
-    <td><b>${totalNetWeightSummary.toLocaleString('en-IN')}</b></td>
+    <td><b>${totalNetWeightSummary}</b></td>   <!-- ✅ Removed .toLocaleString('en-IN') -->
   </tr>
 </table>` : ''}
 
