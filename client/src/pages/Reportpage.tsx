@@ -462,7 +462,13 @@ useEffect(() => {
 
 
 // Generate Purchase HTML report
-const generateHTMLReport = (data: ReportItem[], company: string) => {
+// Generate Purchase HTML report
+const generateHTMLReport = (
+  data: ReportItem[],
+  company: string,
+  dateFrom?: string,
+  dateTo?: string
+) => {
 
   const formatReportDateTime = (date: Date) => {
     const day = String(date.getDate()).padStart(2, '0');
@@ -481,6 +487,20 @@ const generateHTMLReport = (data: ReportItem[], company: string) => {
   };
 
   const reportDate = formatReportDateTime(new Date());
+
+  // ✅ Format date for display (DD-MM-YYYY)
+  const formatDateForDisplay = (dateString?: string) => {
+    if (!dateString) return '-';
+    try {
+      const date = new Date(dateString);
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const year = date.getFullYear();
+      return `${day}-${month}-${year}`;
+    } catch {
+      return dateString;
+    }
+  };
 
   const groupedData = data.reduce((acc: Record<string, ReportItem[]>, item) => {
     if (!acc[item.itemGroup]) acc[item.itemGroup] = [];
@@ -504,8 +524,6 @@ const generateHTMLReport = (data: ReportItem[], company: string) => {
   let grandDed = 0;
   let grandNet = 0;
   let grandSupWh = 0;
-  // ❌ Freight removed
-  // let grandFreight = 0;
 
   let rows = '';
 
@@ -523,7 +541,7 @@ const generateHTMLReport = (data: ReportItem[], company: string) => {
       </tr>
     `;
 
-    // Column headers - ✅ Freight removed, B.Rcvd column duplicated
+    // Column headers
     rows += `
       <tr>
         <th>Sr #</th>
@@ -534,14 +552,13 @@ const generateHTMLReport = (data: ReportItem[], company: string) => {
         <th style="min-width:58px;">Vehicle</th>
         <th>Supplier</th>
         <th>B.Rcvd</th>
-        <th>Accepted</th> <!-- ✅ Duplicate B.Rcvd -->
+        <th>Accepted</th>
         <th>Gross</th>
         <th>Tare</th>
         <th>Bardana</th>
         <th>DED</th>
         <th>Net</th>
         <th>Sup.Wh</th>
-        <!-- ❌ Freight column removed -->
         <th>Status</th>
       </tr>
     `;
@@ -560,8 +577,6 @@ const generateHTMLReport = (data: ReportItem[], company: string) => {
       grandDed += Number(item.ded || 0);
       grandNet += Number(item.net || 0);
       grandSupWh += Number(item.supWh || 0);
-      // ❌ Freight removed
-      // grandFreight += Number(item.freight || 0);
 
       rows += `
         <tr>
@@ -573,14 +588,13 @@ const generateHTMLReport = (data: ReportItem[], company: string) => {
           <td style="color:red;">${item.vehicleNo ?? ''}</td>
           <td>${item.supplierName ?? ''}</td>
           <td>${item.bRcvd ?? 0}</td>
-          <td>${item.bRcvd ?? 0}</td> <!-- ✅ Duplicate B.Rcvd -->
+          <td>${item.bRcvd ?? 0}</td>
           <td>${item.gross ?? 0}</td>
           <td>${item.tare ?? 0}</td>
           <td>${item.bardana ?? 0}</td>
           <td>${item.ded ?? 0}</td>
           <td>${item.net ?? 0}</td>
           <td>${item.supWh ?? 0}</td>
-          <!-- ❌ Freight column removed -->
           <td class="${item.status?.toLowerCase() === 'online' ? 'status-online' : ''}">
             ${item.status ?? ''}
           </td>
@@ -589,41 +603,39 @@ const generateHTMLReport = (data: ReportItem[], company: string) => {
       serialNo++;
     });
 
-    // Item-wise total row - ✅ Freight removed, B.Rcvd duplicate
+    // Item-wise total row
     rows += `
       <tr class="total-row">
         <td colspan="5">Vehicle Count</td>
         <td>${vehicleCount}</td>
         <td>&nbsp;</td>
         <td>${itemBRcvd}</td>
-        <td>${itemBRcvd}</td> <!-- ✅ Duplicate B.Rcvd -->
+        <td>${itemBRcvd}</td>
         <td>&nbsp;</td>
         <td>&nbsp;</td>
         <td>&nbsp;</td>
         <td>${itemDedTotal}</td>
         <td>${itemNetTotal}</td>
         <td>&nbsp;</td>
-        <!-- ❌ Freight column removed -->
         <td>&nbsp;</td>
       </tr>
     `;
   });
 
-  // Grand total row - ✅ Freight removed, B.Rcvd duplicate
+  // Grand total row
   rows += `
     <tr class="grand-total">
       <td colspan="5">Total Vehicle Count</td>
       <td>${grandVehicleCount}</td>
       <td></td>
       <td>${grandBRcvd}</td>
-      <td>${grandBRcvd}</td> <!-- ✅ Duplicate B.Rcvd -->
+      <td>${grandBRcvd}</td>
       <td>${grandGross}</td>
       <td>${grandTare}</td>
       <td>${grandBardana}</td>
       <td>${grandDed}</td>
       <td>${grandNet}</td>
       <td>${grandSupWh}</td>
-      <!-- ❌ Freight column removed -->
       <td></td>
     </tr>
   `;
@@ -674,23 +686,56 @@ const generateHTMLReport = (data: ReportItem[], company: string) => {
     .grand-total td  { color:Blue; font-weight:bold; border-top:2px solid black; }
     .status-online { color:green; font-weight:bold; }
     svg { width:16px; height:16px; }
+
+    /* ✅ Signature styles - label line ke NEECHE */
+    .signatures {
+      display:flex;
+      justify-content:space-between;
+      margin-top:80px;
+      page-break-inside:avoid;
+    }
+    .signature-block {
+      flex:1;
+      text-align:center;
+      font-size:13px;
+      font-weight:bold;
+    }
+    .signature-line {
+      display:block;
+      border-top:1px solid black;
+      width:160px;
+      margin:50px auto 0 auto;
+    }
+    .signature-label {
+      display:block;
+      margin-top:6px;
+      font-size:12px;
+      font-weight:bold;
+    }
+
+    @media print {
+      .print-button { display: none; }
+    }
   </style>
 </head>
 <body>
   <h1>${company} </h1>
   <h2>Daily Material Receipt Report</h2>
 
-  <!-- Date and Print button with inline SVG icons -->
+  <!-- ✅ Date Range Display -->
+  <div style="text-align:center; margin:10px 0; font-size:14px; font-weight:bold; color:#333;">
+    <b>From:</b> ${formatDateForDisplay(dateFrom)} &nbsp;&nbsp; <b>To:</b> ${formatDateForDisplay(dateTo)}
+  </div>
+
+  <!-- Date and Print button -->
   <div class="date-print-row">
     <div class="report-date">
-      <!-- Calendar SVG -->
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
       </svg>
       Print Date: ${new Date().toLocaleString('en-US', { hour12: true })}
     </div>
     <button class="print-button" onclick="window.print()">
-      <!-- Printer SVG -->
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 9V2h12v7M6 18h12v4H6v-4zM6 14h12v4H6v-4z"/>
       </svg>
@@ -701,6 +746,27 @@ const generateHTMLReport = (data: ReportItem[], company: string) => {
   <table>
     ${rows}
   </table>
+
+  <!-- ✅ SIGNATURES SECTION -->
+  <div class="signatures">
+    <div class="signature-block">
+      <span class="signature-line"></span>
+      <span class="signature-label">Prepared By</span>
+    </div>
+    <div class="signature-block">
+      <span class="signature-line"></span>
+      <span class="signature-label">Security</span>
+    </div>
+    <div class="signature-block">
+      <span class="signature-line"></span>
+      <span class="signature-label">Checked By</span>
+    </div>
+    <div class="signature-block">
+      <span class="signature-line"></span>
+      <span class="signature-label">Production Manager</span>
+    </div>
+  </div>
+
 </body>
 </html>
 `;
@@ -736,18 +802,17 @@ const runReport = async () => {
 
     console.log("API response:", rawData);
 
- console.log("🔍=== RUN REPORT DEBUG ===");
-  console.log("1️⃣ purchaseChecked:", purchaseChecked);
-  console.log("2️⃣ purchaseReportChecked:", purchaseReportChecked);
-  console.log("3️⃣ dates object:", dates);
-  console.log("4️⃣ from date:", dates?.from);
-  console.log("5️⃣ to date:", dates?.to);
-  console.log("6️⃣ companyId:", companyId);
-  console.log("7️⃣ branchId:", branchId);
-  console.log("8️⃣ vendorInput:", vendorInput);
-  console.log("9️⃣ itemInput:", itemInput);
-  console.log("🔟 vehicleInput:", vehicleInput);
-
+    console.log("🔍=== RUN REPORT DEBUG ===");
+    console.log("1️⃣ purchaseChecked:", purchaseChecked);
+    console.log("2️⃣ purchaseReportChecked:", purchaseReportChecked);
+    console.log("3️⃣ dates object:", dates);
+    console.log("4️⃣ from date:", dates?.from);
+    console.log("5️⃣ to date:", dates?.to);
+    console.log("6️⃣ companyId:", companyId);
+    console.log("7️⃣ branchId:", branchId);
+    console.log("8️⃣ vendorInput:", vendorInput);
+    console.log("9️⃣ itemInput:", itemInput);
+    console.log("🔟 vehicleInput:", vehicleInput);
 
     // ✅ Fix: API directly array return kar raha hai
     if (!Array.isArray(rawData) || rawData.length === 0) {
@@ -761,9 +826,71 @@ Vehicle: ${vehicleInput || 'All'}`);
       return;
     }
 
-    console.log(`✅ Found ${rawData.length} records`);
+    let purchaseData = rawData;
 
-    const data: ReportItem[] = rawData.map((d: any, i: number) => ({
+    // ✅ Helper: Split semicolon-separated values into array
+    const splitMulti = (value?: string): string[] => {
+      if (!value || !value.trim()) return [];
+      return value
+        .split(';')
+        .map((v) => v.trim().toLowerCase())
+        .filter((v) => v.length > 0);
+    };
+
+    // ✅ FRONTEND VENDOR FILTER - MULTIPLE SUPPORT
+    const vendorFilters = splitMulti(vendorInput);
+    if (vendorFilters.length > 0) {
+      console.log('🔍 Vendor filters:', vendorFilters);
+      purchaseData = purchaseData.filter((d: any) => {
+        const vendorName = (
+          d.vendor_name ||
+          d.supplier_name ||
+          d.supp_name ||
+          d.party_name ||
+          ''
+        )
+          .toLowerCase()
+          .trim();
+        return vendorFilters.some((f) => vendorName.includes(f));
+      });
+    }
+
+    // ✅ FRONTEND ITEM FILTER - MULTIPLE SUPPORT
+    const itemFilters = splitMulti(itemInput);
+    if (itemFilters.length > 0) {
+      console.log('🔍 Item filters:', itemFilters);
+      purchaseData = purchaseData.filter((d: any) => {
+        const itemName = (
+          d.item_desc ||
+          d.feed_name ||
+          d.m_t ||
+          d.item_description ||
+          ''
+        )
+          .toLowerCase()
+          .trim();
+        return itemFilters.some((f) => itemName.includes(f));
+      });
+    }
+
+    // ✅ FRONTEND VEHICLE FILTER - MULTIPLE SUPPORT
+    const vehicleFilters = splitMulti(vehicleInput);
+    if (vehicleFilters.length > 0) {
+      console.log('🔍 Vehicle filters:', vehicleFilters);
+      purchaseData = purchaseData.filter((d: any) => {
+        const vehicleNo = (d.vehicle_no || '').toLowerCase().trim();
+        return vehicleFilters.some((f) => vehicleNo.includes(f));
+      });
+    }
+
+    if (!purchaseData.length) {
+      alert('No Purchase data found for selected filter(s).');
+      return;
+    }
+
+    console.log(`✅ Filtered ${purchaseData.length} records`);
+
+    const data: ReportItem[] = purchaseData.map((d: any, i: number) => ({
       srNo: i + 1,
       mt: d.m_t || d.item_desc || '',
       fwTime: d.slip_in_time || '',
@@ -784,7 +911,8 @@ Vehicle: ${vehicleInput || 'All'}`);
       itemGroup: d.item_desc || ''
     }));
 
-    const html = generateHTMLReport(data, companyName);
+    // ✅ Pass dates to HTML generator
+    const html = generateHTMLReport(data, companyName, fromDate, toDate);
 
     const win = window.open('', '_blank');
     if (!win) {

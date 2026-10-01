@@ -1863,6 +1863,8 @@ app.post("/api/purchase-items", async (req, res) => {
 
   try {
     const {
+      wb_item_p_id = null,
+
       branch_id = null,
       wb_id,
       bardana_type = null,
@@ -1903,23 +1905,48 @@ app.post("/api/purchase-items", async (req, res) => {
       con = null,
     } = itemData;
 
-    // ✅ ROUND FUNCTION - Only for values that need rounding
+    if (!wb_id) {
+      return res.status(400).json({
+        success: false,
+        error: "wb_id is required",
+      });
+    }
+
+    // ---------------------------------------------------------
+    // ROUND FUNCTION
+    // ---------------------------------------------------------
     const roundValue = (value: any): number | null => {
-      if (value === null || value === undefined || value === '') return null;
+      if (value === null || value === undefined || value === "") {
+        return null;
+      }
+
       const num = parseFloat(value);
-      if (isNaN(num)) return null;
+
+      if (isNaN(num)) {
+        return null;
+      }
+
       return Math.round(num);
     };
 
-    // ✅ NO ROUND for weight_per_bags - keep as is (0.1, 0.2, etc.)
-    const parsedWeightPerBags = weight_per_bags !== null && weight_per_bags !== undefined && weight_per_bags !== ''
-      ? parseFloat(weight_per_bags)
-      : null;
+    // ---------------------------------------------------------
+    // WEIGHT PER BAG - DO NOT ROUND
+    // ---------------------------------------------------------
+    const parsedWeightPerBags =
+      weight_per_bags !== null &&
+      weight_per_bags !== undefined &&
+      weight_per_bags !== ""
+        ? parseFloat(weight_per_bags)
+        : null;
 
-    // ✅ Round other values
+    // ---------------------------------------------------------
+    // ROUND OTHER VALUES
+    // ---------------------------------------------------------
     const roundedBardanaWeight = roundValue(bardana_weight);
     const roundedSupplierWeight = roundValue(supplier_weight);
-    const roundedSupWeightWithoutBardana = roundValue(sup_weight_wthout_bardana);
+    const roundedSupWeightWithoutBardana = roundValue(
+      sup_weight_wthout_bardana
+    );
     const roundedNetSupplierWeight = roundValue(net_supplier_weight);
     const roundedQualityDeduction = roundValue(quality_deduction);
     const roundedPoQty = roundValue(po_qty);
@@ -1931,52 +1958,262 @@ app.post("/api/purchase-items", async (req, res) => {
     const roundedFreightChild = roundValue(freight_child);
     const roundedNoOfBags = roundValue(no_of_bags);
 
-    console.log("🔍 DEBUG - Values:", {
-      original_weight_per_bags: weight_per_bags,
-      parsed_weight_per_bags: parsedWeightPerBags,  // ✅ No rounding
-      original_bardana_weight: bardana_weight,
-      rounded_bardana_weight: roundedBardanaWeight,
-    });
-
     const finalDate = igp_date || null;
 
-    const query = `
+    // =========================================================
+    // EXISTING DETAIL ROW
+    // =========================================================
+    // If wb_item_p_id is present, update the SAME detail row.
+    // This prevents a new wb_item_p_id from being generated.
+    // =========================================================
+    if (wb_item_p_id !== null && wb_item_p_id !== undefined && wb_item_p_id !== "") {
+      const existingId = parseInt(wb_item_p_id, 10);
+
+      if (isNaN(existingId)) {
+        return res.status(400).json({
+          success: false,
+          error: "Invalid wb_item_p_id",
+        });
+      }
+
+      console.log(
+        "🔄 Updating existing purchase item:",
+        existingId,
+        "wb_id:",
+        wb_id
+      );
+
+      const updateQuery = `
+        UPDATE wb_weighbridge_items_purchase
+        SET
+          branch_id = $1,
+          wb_id = $2,
+          bardana_type = $3,
+          bardana_type_id = $4,
+          igp_no = $5,
+          manual_dc_no = $6,
+          vehicle_no = $7,
+          weight_per_bags = $8,
+          igp_date = $9,
+          do_date = $10,
+          supplier_weight = $11,
+          sup_weight_wthout_bardana = $12,
+          net_supplier_weight = $13,
+          quality_deduction = $14,
+          bardana_weight = $15,
+          no_of_bags = $16,
+          vendor_id = $17,
+          vendor_name = $18,
+          bag_condition = $19,
+          po_id = $20,
+          po_no = $21,
+          item_code = $22,
+          item_desc = $23,
+          po_qty = $24,
+          igp_qty = $25,
+          balance_qty = $26,
+          customer_id = $27,
+          customer_name = $28,
+          do_no = $29,
+          do_qty = $30,
+          dc_qty = $31,
+          igp_id = $32,
+          item_id = $33,
+          dc_id = $34,
+          last_updated_by = $35,
+          total_feed_bags = $36,
+          freight_child = $37,
+          con = $38,
+          last_updated_date = CURRENT_TIMESTAMP
+        WHERE wb_item_p_id = $39
+          AND wb_id = $40
+        RETURNING *;
+      `;
+
+      const updateValues = [
+        branch_id != null ? parseInt(branch_id) : null,
+        wb_id,
+        bardana_type,
+        bardana_type_id != null ? parseInt(bardana_type_id) : null,
+        igp_no,
+        manual_dc_no,
+        vehicle_no,
+        parsedWeightPerBags,
+        finalDate,
+        finalDate,
+        roundedSupplierWeight,
+        roundedSupWeightWithoutBardana,
+        roundedNetSupplierWeight,
+        roundedQualityDeduction,
+        roundedBardanaWeight,
+        roundedNoOfBags,
+        vendor_id != null ? parseInt(vendor_id) : null,
+        vendor_name,
+        bag_condition,
+        po_id != null ? parseInt(po_id) : null,
+        po_no,
+        item_code,
+        item_desc,
+        roundedPoQty,
+        roundedIgpQty,
+        roundedBalanceQty,
+        customer_id != null ? parseInt(customer_id) : null,
+        customer_name,
+        do_no,
+        roundedDoQty,
+        roundedDcQty,
+        igp_id != null ? parseInt(igp_id) : null,
+        item_id != null ? parseInt(item_id) : null,
+        dc_id != null ? parseInt(dc_id) : null,
+        last_updated_by != null
+          ? parseInt(last_updated_by)
+          : null,
+        roundedTotalFeedBags,
+        roundedFreightChild,
+        con || null,
+        existingId,
+        wb_id,
+      ];
+
+      console.log("🔍 Updating detail row with ID:", existingId);
+
+      const updateResult = await pool.query(
+        updateQuery,
+        updateValues
+      );
+
+      if (updateResult.rows.length === 0) {
+        console.error(
+          "❌ Detail row not found:",
+          existingId,
+          "wb_id:",
+          wb_id
+        );
+
+        return res.status(404).json({
+          success: false,
+          error: "Purchase item not found",
+          wb_item_p_id: existingId,
+          wb_id,
+        });
+      }
+
+      console.log("✅ Purchase item UPDATED successfully:", {
+        wb_item_p_id: updateResult.rows[0].wb_item_p_id,
+        wb_id: updateResult.rows[0].wb_id,
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: "Purchase item updated successfully",
+        operation: "UPDATE",
+        data: updateResult.rows[0],
+      });
+    }
+
+    // =========================================================
+    // NEW DETAIL ROW
+    // =========================================================
+    // No wb_item_p_id means this is a genuinely new detail row.
+    // PostgreSQL sequence will generate the new ID.
+    // =========================================================
+
+    console.log(
+      "➕ Creating NEW purchase item for wb_id:",
+      wb_id
+    );
+
+    const insertQuery = `
       INSERT INTO wb_weighbridge_items_purchase (
         branch_id,
-        wb_id, bardana_type, bardana_type_id, igp_no, manual_dc_no, vehicle_no,
+        wb_id,
+        bardana_type,
+        bardana_type_id,
+        igp_no,
+        manual_dc_no,
+        vehicle_no,
         weight_per_bags,
         igp_date,
         do_date,
-        supplier_weight, sup_weight_wthout_bardana, net_supplier_weight,
-        quality_deduction, bardana_weight, no_of_bags,
-        vendor_id, vendor_name, bag_condition,
-        po_id, po_no, item_code, item_desc, po_qty, igp_qty, balance_qty,
-        customer_id, customer_name, do_no, do_qty, dc_qty, igp_id, item_id, dc_id,
-        created_by, last_updated_by, total_feed_bags,
+        supplier_weight,
+        sup_weight_wthout_bardana,
+        net_supplier_weight,
+        quality_deduction,
+        bardana_weight,
+        no_of_bags,
+        vendor_id,
+        vendor_name,
+        bag_condition,
+        po_id,
+        po_no,
+        item_code,
+        item_desc,
+        po_qty,
+        igp_qty,
+        balance_qty,
+        customer_id,
+        customer_name,
+        do_no,
+        do_qty,
+        dc_qty,
+        igp_id,
+        item_id,
+        dc_id,
+        created_by,
+        last_updated_by,
+        total_feed_bags,
         freight_child,
         con,
-        creation_date, last_updated_date
+        creation_date,
+        last_updated_date
       )
       VALUES (
         $1,
-        $2, $3, $4, $5, $6, $7,
+        $2,
+        $3,
+        $4,
+        $5,
+        $6,
+        $7,
         $8,
         $9,
         $10,
-        $11, $12, $13,
-        $14, $15, $16,
-        $17, $18, $19,
-        $20, $21, $22, $23, $24, $25, $26,
-        $27, $28, $29, $30, $31, $32, $33, $34,
-        $35, $36, $37,
+        $11,
+        $12,
+        $13,
+        $14,
+        $15,
+        $16,
+        $17,
+        $18,
+        $19,
+        $20,
+        $21,
+        $22,
+        $23,
+        $24,
+        $25,
+        $26,
+        $27,
+        $28,
+        $29,
+        $30,
+        $31,
+        $32,
+        $33,
+        $34,
+        $35,
+        $36,
+        $37,
         $38,
         $39,
-        CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+        CURRENT_TIMESTAMP,
+        CURRENT_TIMESTAMP
       )
       RETURNING *;
     `;
 
-    const values = [
+    const insertValues = [
       branch_id != null ? parseInt(branch_id) : null,
       wb_id,
       bardana_type,
@@ -1984,15 +2221,15 @@ app.post("/api/purchase-items", async (req, res) => {
       igp_no,
       manual_dc_no,
       vehicle_no,
-      parsedWeightPerBags,              // $8  ✅ NO ROUNDING
-      finalDate,                        // $9
-      finalDate,                        // $10
-      roundedSupplierWeight,            // $11 ✅ Rounded
-      roundedSupWeightWithoutBardana,   // $12 ✅ Rounded
-      roundedNetSupplierWeight,         // $13 ✅ Rounded
-      roundedQualityDeduction,          // $14 ✅ Rounded
-      roundedBardanaWeight,             // $15 ✅ Rounded
-      roundedNoOfBags,                  // $16 ✅ Rounded
+      parsedWeightPerBags,
+      finalDate,
+      finalDate,
+      roundedSupplierWeight,
+      roundedSupWeightWithoutBardana,
+      roundedNetSupplierWeight,
+      roundedQualityDeduction,
+      roundedBardanaWeight,
+      roundedNoOfBags,
       vendor_id != null ? parseInt(vendor_id) : null,
       vendor_name,
       bag_condition,
@@ -2000,48 +2237,56 @@ app.post("/api/purchase-items", async (req, res) => {
       po_no,
       item_code,
       item_desc,
-      roundedPoQty,                     // $24 ✅ Rounded
-      roundedIgpQty,                    // $25 ✅ Rounded
-      roundedBalanceQty,                // $26 ✅ Rounded
+      roundedPoQty,
+      roundedIgpQty,
+      roundedBalanceQty,
       customer_id != null ? parseInt(customer_id) : null,
       customer_name,
       do_no,
-      roundedDoQty,                     // $30 ✅ Rounded
-      roundedDcQty,                     // $31 ✅ Rounded
+      roundedDoQty,
+      roundedDcQty,
       igp_id != null ? parseInt(igp_id) : null,
       item_id != null ? parseInt(item_id) : null,
       dc_id != null ? parseInt(dc_id) : null,
       created_by != null ? parseInt(created_by) : null,
-      last_updated_by,
-      roundedTotalFeedBags,             // $37 ✅ Rounded
-      roundedFreightChild,              // $38 ✅ Rounded
-      con || null,                      // $39
+      last_updated_by != null
+        ? parseInt(last_updated_by)
+        : null,
+      roundedTotalFeedBags,
+      roundedFreightChild,
+      con || null,
     ];
 
-    console.log("🔍 DEBUG - Final Values Array:", {
-      weight_per_bags: values[7],
-      bardana_weight: values[14],
-      supplier_weight: values[10],
+    console.log("🔍 DEBUG - New Detail Values:", {
+      wb_id,
+      weight_per_bags: insertValues[7],
+      bardana_weight: insertValues[14],
+      supplier_weight: insertValues[10],
     });
 
-    const result = await pool.query(query, values);
+    const insertResult = await pool.query(
+      insertQuery,
+      insertValues
+    );
 
-    console.log("✅ Purchase item saved:", {
-      wb_item_p_id: result.rows[0].wb_item_p_id,
-      weight_per_bags: result.rows[0].weight_per_bags,
-      bardana_weight: result.rows[0].bardana_weight,
+    console.log("✅ Purchase item INSERTED successfully:", {
+      wb_item_p_id: insertResult.rows[0].wb_item_p_id,
+      wb_id: insertResult.rows[0].wb_id,
     });
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       message: "Purchase item saved successfully",
-      data: result.rows[0],
+      operation: "INSERT",
+      data: insertResult.rows[0],
     });
+
   } catch (err) {
-    console.error("❌ Error inserting purchase item:", err);
+    console.error("❌ Error saving purchase item:", err);
+
     res.status(500).json({
       success: false,
-      error: "Insert error",
+      error: "Save error",
       details: err.message,
     });
   }

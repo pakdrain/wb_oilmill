@@ -1078,13 +1078,12 @@ const generateReportHTML = (reportData: any) => {
     return (netWeight / quantity).toFixed(2);
   };
 
-  const calculateCustomerNetWeight = () => {
-    const qualityded = parseFloat(reportData.quality_deduction) || 0;
-    const withBardanaWeight = Math.trunc((parseFloat(reportData.grossWeight) || 0) + (parseFloat(reportData.bardanaWeight) || 0));
-    const supplierWeight = parseFloat(reportData.supplierWeight) || withBardanaWeight;
-    const minWeight = Math.max(0, Math.min(supplierWeight, withBardanaWeight) - qualityded);
-    return minWeight.toLocaleString("en-IN") + " KG";
-  };
+const calculateCustomerNetWeight = () => {
+  const supplierWeight = parseFloat(reportData.supplierWeight) || 0;
+  const netWeight = parseFloat(reportData.netWeight) || 0;
+  const minWeight = Math.max(0, Math.min(supplierWeight, netWeight));
+  return minWeight.toLocaleString("en-IN") + " KG";
+};
 
   const weightByName = reportData.created_by_name || "WRONG";
   
@@ -1505,7 +1504,7 @@ const generateReportHTML = (reportData: any) => {
                   <div><span class="label">QUANTITY</span><span class="value">${reportData.noOfBags || ""}</span></div>
                   <div>
                     <span class="label">NET WEIGHT</span>
-                    <div class="flex-1 border-b border-black">_________________________</div>
+                 <span class="value" style="font-weight: bold;">${calculateCustomerNetWeight()}</span>
                   </div>
                 </div>
               </div>
@@ -3185,6 +3184,7 @@ const calculateWeights = () => {
   }));
 };
 
+
 // ✅ Gross W.B.D = Sirf 1st - 2nd (raw, no bardana deduction)
 useEffect(() => {
   const firstWeight = parseFloat(formData.firstWeight) || 0;
@@ -4809,6 +4809,20 @@ const generateAndPrintReport = (apiData: any) => {
     return (netWeight / quantity).toFixed(2);
   };
 
+  // ✅ Customer Net Weight = min(supplierWeight, netWeight)
+const calculateCustomerNetWeight = () => {
+  const supplierRaw = parseFloat(supplierWeight);
+  const netRaw = parseFloat(netWeight);
+
+  const supplier = isNaN(supplierRaw) ? Infinity : supplierRaw;
+  const net = isNaN(netRaw) ? Infinity : netRaw;
+
+  let minWeight = Math.min(supplier, net);
+  if (!isFinite(minWeight)) minWeight = 0;
+
+  return Math.max(0, minWeight).toLocaleString("en-IN");
+};
+
   // ✅ Weight By - always shows first weight person
   const weightByName = apiData.created_by_name || currentUserName || "WRONG";
   
@@ -5243,7 +5257,7 @@ const generateAndPrintReport = (apiData: any) => {
                   <div><span class="label">QUANTITY</span><span class="value">${noOfBags}</span></div>
                   <div class="flex items-center gap-1">
                     <span class="label text-xs text-black w-20">NET WEIGHT</span>
-                     <div class="flex-1 border-b border-black">_________________________</div>
+                      <span class="value" style="font-weight: bold;">${calculateCustomerNetWeight()}</span>
                   </div>
                 </div>
               </div>

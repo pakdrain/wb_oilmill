@@ -808,7 +808,7 @@ const generateReportHTML = (
     .truck-label { font-weight: 900; font-size: 12px; border-bottom: 1px solid black; width: 100%; text-align: center; padding-bottom: 2px; margin-bottom: 2px; }
     .table { width: 100%; border-collapse: collapse; margin-top: 4px; }
     .table th, .table td { border: 1px solid black; padding: 3px 4px; text-align: left; font-size: 12px; font-weight: 900; }
-    .signatures { display: flex; justify-content: space-between; margin-top: 45px; gap: 8px; }
+    .signatures { display: flex; justify-content: space-between; margin-top: 90px; gap: 8px; }
     .signature-block { flex: 1; font-size: 10px; text-align: center; }
     .signature-label { display: inline-block; font-size: 10px; font-weight: 900; }
     .signature-line { display: inline-block; border-bottom: 1px solid black; width: 80px; position: relative; }
@@ -1479,6 +1479,7 @@ const loadDataByWbId = async (wbId: number) => {
 
           return {
             doId: String(index + 1),
+             wb_item_p_id: detail.wb_item_p_id || null,
             dcNo: detail.manual_dc_no || detail.igp_no || "",
             doNo: detail.do_no || detail.po_no || "",
             customerName: detail.customer_name || detail.vendor_name || "",
@@ -1525,6 +1526,7 @@ const loadDataByWbId = async (wbId: number) => {
         // Ensure 8 rows - also add bardana fields to empty rows
         while (salesRows.length < 8) {
           salesRows.push({
+             wb_item_p_id: null,
             doId: "",
             dcId: "",
             dcNo: "",
@@ -3536,17 +3538,17 @@ const totalFeedBags = nonEmptyRows.reduce(
 
 // ✅ First, delete existing child records for this wb_id
 console.log("🗑️ Clearing existing child records for wb_id:", savedWbId);
-try {
-  const deleteResponse = await fetch(`/api/purchase-items/by-wbid/${savedWbId}`, {
-    method: "DELETE"
-  });
+// try {
+//   const deleteResponse = await fetch(`/api/purchase-items/by-wbid/${savedWbId}`, {
+//     method: "DELETE"
+//   });
   
-  if (deleteResponse.ok) {
-    console.log("✅ Existing child records deleted");
-  }
-} catch (deleteError) {
-  console.log("Note: Could not delete old records, continuing:", deleteError);
-}
+//   if (deleteResponse.ok) {
+//     console.log("✅ Existing child records deleted");
+//   }
+// } catch (deleteError) {
+//   console.log("Note: Could not delete old records, continuing:", deleteError);
+// }
 
 // ✅ Save new child records with bardana fields
 for (const row of nonEmptyRows) {
@@ -3564,6 +3566,7 @@ for (const row of nonEmptyRows) {
   });
 
  const salesItemPayload = {
+    wb_item_p_id: row.wb_item_p_id || null,
   branch_id:
     formData.branchId &&
     formData.branchId !== "undefined" &&
@@ -3893,6 +3896,7 @@ setTimeout(async () => {
 
       for (const row of nonEmptyRows) {
 const salesItemPayload = {
+    wb_item_p_id: row.wb_item_p_id || null,
   branch_id:
     formData.branchId &&
     formData.branchId !== "undefined" &&
