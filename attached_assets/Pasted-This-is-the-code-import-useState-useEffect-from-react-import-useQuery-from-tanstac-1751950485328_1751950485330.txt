@@ -402,10 +402,10 @@ const generateDetailedReportHTML = (data: any) => {
           </div>
          </div>
           <hr style="border: 1px solid #000; margin: 20px 0;" />
-           <!-- Oil Mill Copy -->
+           <!-- Crush Plant Copy -->
           <div class="slip">
             <div class="slip-header">
-              <div class="header-left">Oil Mill Copy </div>
+              <div class="header-left">Crush Plant Copy </div>
               <div class="header-center">
                <div class="company-name">Shahzor  Feed  Mill</div>
         <div style="height: 10px;"></div>

@@ -2654,7 +2654,7 @@ const currentTime = new Date()
       <hr style="border: 1px solid #000; margin: 14px 0;" />
       <div class="slip">
         <div class="slip-header">
-          <div class="header-left">Oil Mill Copy </div>
+          <div class="header-left">Crush Plant Copy </div>
           <div class="header-center">
             <div class="company-name">Sabirs Vegetable Oils (Pvt.) Ltd.</div>
             <div style="height: 6px;"></div>
@@ -3194,10 +3194,10 @@ const currentTime = new Date()
       
       <hr style="border: 1px solid #000; margin: 14px 0;" />
       
-      <!-- Oil Mill Copy -->
+      <!-- Crush Plant Copy -->
       <div class="slip">
         <div class="slip-header">
-          <div class="header-left">Oil Mill Copy </div>
+          <div class="header-left">Crush Plant Copy </div>
           <div class="header-center">
             <div class="company-name">Sabirs Vegetable Oils (Pvt.) Ltd.</div>
             <div style="height: 6px;"></div>
@@ -3263,7 +3263,7 @@ const currentTime = new Date()
           </div>
         </div>
         
-        <!-- Signatures for Oil Mill Copy -->
+        <!-- Signatures for Crush Plant Copy -->
         <div class="signatures">
           <div class="signature-block">
             <div style="font-size: 9px; margin-bottom: 1px;">${displayWeightByName}</div>

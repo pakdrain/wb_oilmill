@@ -1377,10 +1377,10 @@ const calculateCustomerNetWeight = () => {
       
       <hr style="border: 1px solid #000; margin: 14px 0;" />
       
-      <!-- Oil Mill Copy -->
+      <!-- Crush Plant Copy -->
       <div class="slip">
         <div class="slip-header">
-          <div class="header-left">Oil Mill Copy </div>
+          <div class="header-left">Crush Plant Copy </div>
           <div class="header-center">
             <div class="company-name">Sabirs Vegetable Oils (Pvt.) Ltd.</div>
             <div style="height: 6px;"></div>
@@ -1445,7 +1445,7 @@ const calculateCustomerNetWeight = () => {
           </div>
         </div>
         
-        <!-- Signatures for Oil Mill Copy -->
+        <!-- Signatures for Crush Plant Copy -->
         <div class="signatures">
           <div class="signature-block">
             <div style="font-size: 9px; margin-bottom: 1px;">${weightByName}</div>
@@ -1795,11 +1795,12 @@ useEffect(() => {
 
 
   // Auto-calculate formulas when relevant fields change
-  useEffect(() => {
+ useEffect(() => {
     const firstWeight = parseFloat(formData.firstWeight) || 0;
     const secondWeight = parseFloat(formData.secondWeight) || 0;
     const wtPerBag = parseFloat(formData.wtPerBag) || 0;
     const noOfBags = parseFloat(formData.noOfBags) || 0;
+    const qualityDeduction = parseFloat(formData.qualityDeduction) || 0;
 
     // Bardana Weight = weight per bag * number of bags
     const bardanaWeight = Math.round(Number(wtPerBag * noOfBags));
@@ -1808,7 +1809,7 @@ useEffect(() => {
     const grossWeight = firstWeight - secondWeight - bardanaWeight;
 
     // Net Weight = First Weight - Second Weight - Bardana Weight
-    const netWeight = grossWeight - bardanaWeight;
+    const netWeight = grossWeight - qualityDeduction;
 
     setFormData((prev) => ({
       ...prev,
@@ -1822,7 +1823,6 @@ useEffect(() => {
     formData.wtPerBag,
     formData.noOfBags,
   ]);
-
   // Auto-calculate Balance Quantity for offline mode
   useEffect(() => {
     if (!onlineMode) {
@@ -2096,36 +2096,49 @@ const response = await fetch(apiUrl);
   }, [branches, isEditMode, formData.branchId]);
 
   // Function to reset form to clean state
-  const resetFormToInitial = (preserveEditMode = false) => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const typeMode = urlParams.get("type");
-    const isOfflineMode = typeMode === "offline";
 
-    // Sync onlineMode state with URL parameter
-    if (typeMode === "offline") {
-      setOnlineMode(false);
-    } else if (typeMode === "online") {
-      setOnlineMode(true);
-    }
+const resetFormToInitial = (preserveEditMode = false) => {
+  const urlParams = new URLSearchParams(window.location.search);
+  const typeMode = urlParams.get("type");
+  const isOfflineMode = typeMode === "offline";
 
-    setFormData({
-      ...initialFormData,
-      slipInTime: "",
-      onlineEntry: isOfflineMode ? "No" : "Yes",
-      offlineEntry: isOfflineMode ? "Yes" : "No",
-      entryType: "PURCHASE",
-      creationDate: getPKTDateTime(),
-      lastUpdatedDate: getPKTDateTime(),
-      slipDate: getPKTDateTime(),
-    });
-    setIgpItems([]);
-    setIgpDataFetched(false); // Reset IGP data fetched state
+  // Preserve the default branch during form reset
+  const defaultBranch = branches[0];
 
-    if (!preserveEditMode) {
-      setIsEditMode(false);
-      setEditingWbId(null);
-    }
-  };
+  // Sync onlineMode state with URL parameter
+  if (typeMode === "offline") {
+    setOnlineMode(false);
+  } else if (typeMode === "online") {
+    setOnlineMode(true);
+  }
+
+  setFormData({
+    ...initialFormData,
+    branchId:
+      defaultBranch?.branch_id.toString() ||
+      formData.branchId ||
+      initialFormData.branchId,
+    branch:
+      defaultBranch?.branch_name ||
+      formData.branch ||
+      initialFormData.branch,
+    slipInTime: "",
+    onlineEntry: isOfflineMode ? "No" : "Yes",
+    offlineEntry: isOfflineMode ? "Yes" : "No",
+    entryType: "PURCHASE",
+    creationDate: getPKTDateTime(),
+    lastUpdatedDate: getPKTDateTime(),
+    slipDate: getPKTDateTime(),
+  });
+
+  setIgpItems([]);
+  setIgpDataFetched(false);
+
+  if (!preserveEditMode) {
+    setIsEditMode(false);
+    setEditingWbId(null);
+  }
+};
 
   // ===== CAMERA DATA SECTION - ULTRA-HIGH PERFORMANCE =====
   // Get camera data with maximum performance optimization
@@ -2980,24 +2993,36 @@ useEffect(() => {
 const [showOfflineEntries, setShowOfflineEntries] = useState(false);
 
 
-
 const resetForm = () => {
-  // When Clear button is pressed, clear everything except Slip No
+  // Preserve Slip No and the default branch
   const currentSlipNo = formData.slipNo;
+  const defaultBranch = branches[0];
+
   setFormData({
     ...initialFormData,
     slipNo: currentSlipNo,
+    branchId:
+      defaultBranch?.branch_id.toString() ||
+      formData.branchId ||
+      initialFormData.branchId,
+    branch:
+      defaultBranch?.branch_name ||
+      formData.branch ||
+      initialFormData.branch,
   });
+
   setIsEditMode(false);
   setEditingWbId(null);
-  // Keep current online/offline mode
 
-  // ---- Call the same function logic as Button ----
-  if (showOfflineEntries) return; // Disabled state check
-  setSelectedForm("purchase"); // Mark as active
+  // Keep current online/offline mode
+  if (showOfflineEntries) return;
+
+  setSelectedForm("purchase");
+
   const urlParams = new URLSearchParams(window.location.search);
   const typeMode = urlParams.get("type") || "online";
   const targetUrl = `/purchase-form?type=${typeMode}`;
+
   sessionStorage.removeItem("purchaseFormEditMode");
   window.location.href = targetUrl;
 };
@@ -3616,6 +3641,12 @@ if (isEditMode && formData.offlineEntry === "Yes" && formData.igpNo) {
 
     if (!formData.vehicleNo || formData.vehicleNo.trim() === "") {
       alert("Vehicle number is required");
+      setLoading(false);
+      return;
+    }
+
+      if (!formData.supplierWeight || formData.supplierWeight.trim() === "") {
+      alert("Supplier weight is required");
       setLoading(false);
       return;
     }
@@ -5129,10 +5160,10 @@ const calculateCustomerNetWeight = () => {
       
       <hr style="border: 1px solid #000; margin: 20px 0;" />
       
-      <!-- Oil Mill Copy -->
+      <!-- Crush Plant Copy -->
       <div class="slip">
         <div class="slip-header">
-          <div class="header-left">Oil Mill Copy </div>
+          <div class="header-left">Crush Plant Copy </div>
           <div class="header-center">
             <div class="company-name">Sabirs Vegetable Oils (Pvt.) Ltd.</div>
             <div style="height: 10px;"></div>

@@ -545,7 +545,7 @@ const generateReportHTML = (
   const displaySlipInTime = slipInTime ? formatPKTDateTime(slipInTime) : "";
   const displaySlipOutTime = slipOutTime ? formatPKTDateTime(slipOutTime) : "";
 
-  // ✅ Customer copy — DC wise grouping (only DC, Party, Qty)
+  // Customer copy — DC-wise grouping with commodity
   const groupedByDC: { [key: string]: any[] } = {};
   dbRows.forEach(row => {
     const dcNo = row.dcNo || 'No DC';
@@ -560,13 +560,14 @@ const generateReportHTML = (
       <div style="margin-bottom: 10px; page-break-inside: avoid;">
         <table class="table">
           <thead>
-            <tr><th>DC #</th><th>Party Name</th><th>Qty</th></tr>
+            <tr><th>DC #</th><th>Party Name</th><th>Commodity</th><th>Qty</th></tr>
           </thead>
           <tbody>
             ${rows.map(row => `
               <tr>
                 <td>${row.dcNo || ""}</td>
                 <td>${row.customerName || ""}</td>
+                <td>${row.itemDescription || row.itemCode || ""}</td>
                 <td>${row.dcQty || ""}</td>
               </tr>
             `).join("")}
@@ -626,8 +627,8 @@ const generateReportHTML = (
     </div>
   `;
 
-  // ✅ Generate Office/Mill Copy
-  const generateOfficeCopyHTML = (copyType: 'Office' | 'Mill', tablesHTML: string) => {
+  // ✅ Generate Office/Crush Plant Copy
+  const generateOfficeCopyHTML = (copyType: 'Office' | 'Crush Plant', tablesHTML: string) => {
     return `
       <div class="print-date">Print Date: ${currentDate} ${currentTime}</div>
       <div class="title">Sabirs Vegetable Oils (Pvt.) Ltd.</div>
@@ -768,7 +769,7 @@ const generateReportHTML = (
   };
 
   const officeCopyHTML = generateOfficeCopyHTML('Office', officeCopyTableHTML);
-  const millCopyHTML = generateOfficeCopyHTML('Mill', officeCopyTableHTML);
+  const millCopyHTML = generateOfficeCopyHTML('Crush Plant', officeCopyTableHTML);
   const customerCopyHTML = generateCustomerCopyHTML();
 
   return `
@@ -828,7 +829,7 @@ const generateReportHTML = (
   
   <hr class="dashed" />
   
-  <!-- Mill Copy -->
+  <!-- Crush Plant Copy -->
   <div class="copy-section">
     ${millCopyHTML}
   </div>
@@ -3311,7 +3312,12 @@ function autoPrintSlip(
       updatedApiData,  // ✅ Use updated data
       dbRows
     );
-    preparePrintWindow(reportHTML, "Weighbridge Report");
+
+    // ✅ Delay 1.5 seconds before printing
+    setTimeout(() => {
+      preparePrintWindow(reportHTML, "Weighbridge Report");
+    }, 1500);
+
   } 
   // ✅ CONDITION: If only first weight exists → generateNewReportHTML (Feeds Dispatch Order)
   else if (hasFirstWeight) {
@@ -3323,7 +3329,11 @@ function autoPrintSlip(
       updatedApiData,  // ✅ Use updated data
       dbRows
     );
-    preparePrintWindow(reportHTML, "Feeds Dispatch Order");
+
+    // ✅ Delay 1.5 seconds before printing
+    setTimeout(() => {
+      preparePrintWindow(reportHTML, "Feeds Dispatch Order");
+    }, 1500);
   }
 }
   
